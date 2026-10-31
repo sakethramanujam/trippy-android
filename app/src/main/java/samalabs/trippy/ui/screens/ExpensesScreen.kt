@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -123,6 +124,8 @@ fun ExpensesScreen(tripId: Int, onBack: () -> Unit) {
                 ledger = l.await()
             }
             error = null
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             error = problem(e)
         }
@@ -199,14 +202,14 @@ fun ExpensesScreen(tripId: Int, onBack: () -> Unit) {
             onSave = { body ->
                 repo.saveExpense(tripId, editing?.id, body)
                 target = null
-                reload()
-                c.trips.refresh()
+                // Closing the sheet cancels its scope, so refresh on the screen's scope.
+                scope.launch { reload(); c.trips.refresh() }
             },
             onDelete = {
                 editing?.let { repo.deleteExpense(it.id) }
                 target = null
-                reload()
-                c.trips.refresh()
+                // Closing the sheet cancels its scope, so refresh on the screen's scope.
+                scope.launch { reload(); c.trips.refresh() }
             },
         )
     }
