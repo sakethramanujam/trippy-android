@@ -49,7 +49,7 @@ fun StatusBanner(title: String, subtitle: String? = null, color: Color = TColor.
             .border(0.5.dp, color.copy(alpha = 0.2f), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(title, style = TType.headline, color = color)
-        subtitle?.takeIf { it.isNotBlank() }?.let { Text(it, style = TType.footnote, color = color.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        subtitle?.takeIf { it.isNotBlank() && it != title }?.let { Text(it, style = TType.footnote, color = color.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
 }
 
