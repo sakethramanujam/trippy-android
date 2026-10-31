@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -62,6 +63,11 @@ fun DeviceSettings() {
                 colors = SwitchDefaults.colors(checkedTrackColor = TColor.coral),
             )
         }
-        // @widget-row
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.material3.HorizontalDivider(color = TColor.divider)
+        AccountLink("Add home-screen widget", Icons.Filled.Widgets, TColor.blue) {
+            if (!samalabs.trippy.widget.WidgetStore.requestPin(ctx))
+                android.widget.Toast.makeText(ctx, "Long-press your home screen, tap Widgets, then find Trippy.", android.widget.Toast.LENGTH_LONG).show()
+        }
     }
 }

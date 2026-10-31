@@ -26,6 +26,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Home-screen widget: next trip and next flight (Glance). -->
+        <receiver
+            android:name=".widget.TrippyWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/trippy_widget_info" />
+        </receiver>
         <!-- Share cards: PNGs written to cache/share and handed to the share sheet. -->
         <provider
             android:name="androidx.core.content.FileProvider"

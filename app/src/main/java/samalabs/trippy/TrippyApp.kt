@@ -10,6 +10,7 @@ import samalabs.trippy.data.TrashRepository
 import samalabs.trippy.data.RoomResponseCache
 import samalabs.trippy.data.TrippyDatabase
 import samalabs.trippy.notify.TripReminders
+import samalabs.trippy.widget.WidgetStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,11 +34,11 @@ class AppContainer(app: Application) {
 
     init {
         api.onSessionExpired = { sessions.signOut(); trips.wipeCache() }
-        auth.onSignedOut = { trips.wipeCache(); reminders.cancelAll() }
+        auth.onSignedOut = { trips.wipeCache(); reminders.cancelAll(); WidgetStore.clear(app) }
         TripReminders.createChannel(app)
         // Re-plan reminders whenever the trips change (cache prime, refresh, edits).
         appScope.launch {
-            trips.state.filter { it.loaded }.map { it.trips }.distinctUntilChanged().collect { reminders.reschedule(it) }
+            trips.state.filter { it.loaded }.map { it.trips }.distinctUntilChanged().collect { reminders.reschedule(it); WidgetStore.write(app, it) }
         }
     }
 }
