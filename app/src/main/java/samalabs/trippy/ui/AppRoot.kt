@@ -25,8 +25,10 @@ fun AppRoot() {
     }
     Box(Modifier.fillMaxSize().background(TColor.canvas)) {
         val s = session ?: return@Box
-        Crossfade(s.signedIn, label = "root") { signedIn ->
-            if (signedIn) key(s.scope) { MainShell() } else OnboardingFlow()
+        ProvideNetworkAccess(s.server) {
+            Crossfade(s.signedIn, label = "root") { signedIn ->
+                if (signedIn) key(s.scope) { MainShell() } else OnboardingFlow()
+            }
         }
     }
 }

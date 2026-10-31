@@ -14,6 +14,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.net.UnknownServiceException
 import java.util.concurrent.TimeUnit
 
 /** The server answered with an error; [message] is the server's `detail`, safe to show. */
@@ -43,7 +44,7 @@ class ApiClient(
     suspend fun health(baseUrl: String): ServerHealth = withContext(Dispatchers.IO) {
         val req = Request.Builder().url("$baseUrl/health").header("Cache-Control", "no-cache").build()
         val quick = http.newBuilder().callTimeout(6, TimeUnit.SECONDS).build()
-        val res = try { quick.newCall(req).execute() } catch (e: IOException) { throw OfflineException(e) }
+        val res = try { quick.newCall(req).execute() } catch (e: UnknownServiceException) { throw cleartextBlocked() } catch (e: IOException) { throw OfflineException(e) }
         res.use {
             if (it.code != 200) throw ApiException(it.code, "The server answered HTTP ${it.code}.")
             val h = runCatching { TrippyJson.decodeFromString<ServerHealth>(it.body.string()) }.getOrNull()
@@ -86,6 +87,8 @@ class ApiClient(
             builder.method(method, body)
             try {
                 http.newCall(builder.build()).execute().use { it.code to it.body.string() }
+            } catch (e: UnknownServiceException) {
+                throw cleartextBlocked()
             } catch (e: IOException) {
                 throw OfflineException(e)
             } catch (e: IllegalArgumentException) {
@@ -94,6 +97,11 @@ class ApiClient(
         }
 
     companion object {
+        private fun cleartextBlocked() = ApiException(
+            0,
+            "Android only allows plain http:// to local and Tailscale addresses. Use https:// for this server.",
+        )
+
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         fun defaultHttp(): OkHttpClient = OkHttpClient.Builder()

@@ -35,6 +35,8 @@ import samalabs.trippy.data.ServerHealth
 import samalabs.trippy.data.ServerUrl
 import samalabs.trippy.data.SessionStore
 import samalabs.trippy.ui.LocalContainer
+import samalabs.trippy.ui.LocalNetworkAccess
+import samalabs.trippy.data.LocalNetwork
 import samalabs.trippy.ui.components.AuthField
 import samalabs.trippy.ui.components.PrimaryButton
 import samalabs.trippy.ui.components.ServerCheck
@@ -49,9 +51,11 @@ class ServerStatus(private val api: ApiClient, private val sessions: SessionStor
     var check by mutableStateOf(ServerCheck.Checking); private set
     var health by mutableStateOf<ServerHealth?>(null); private set
     var error by mutableStateOf<String?>(null); private set
+    var blocked by mutableStateOf(false); private set
     val baseUrl: String get() = sessions.current.server
 
-    suspend fun refresh() {
+    suspend fun refresh(localNetworkBlocked: Boolean = blocked) {
+        blocked = localNetworkBlocked
         check = ServerCheck.Checking
         try {
             health = api.health(baseUrl); error = null; check = ServerCheck.Ok
@@ -64,13 +68,15 @@ class ServerStatus(private val api: ApiClient, private val sessions: SessionStor
         get() = when (check) {
             ServerCheck.Checking -> "Checking…"
             ServerCheck.Ok -> health?.summary.orEmpty()
-            ServerCheck.Failed -> "Not reachable · tap to change"
+            ServerCheck.Failed -> if (blocked) "Allow Nearby devices to reach this server" else "Not reachable · tap to change"
         }
 }
 
 @Composable
 fun ServerRow(status: ServerStatus, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    ServerStatusRow(ServerUrl.displayHost(status.baseUrl), status.check, status.detail, onClick, modifier)
+    val access = LocalNetworkAccess.current
+    val tap = if (status.check == ServerCheck.Failed && access.blocked) access.request else onClick
+    ServerStatusRow(ServerUrl.displayHost(status.baseUrl), status.check, status.detail, tap, modifier)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +88,7 @@ fun ServerSettingsSheet(onDismiss: () -> Unit, onSaved: () -> Unit) {
     var text by remember { mutableStateOf(container.sessions.current.server) }
     var status by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
     var testing by remember { mutableStateOf(false) }
+    val access = LocalNetworkAccess.current
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = TColor.surface) {
         Column(
@@ -106,10 +113,13 @@ fun ServerSettingsSheet(onDismiss: () -> Unit, onSaved: () -> Unit) {
                 if (url == null) { status = false to "That isn't a valid URL. Try https://trippy.example.com or http://192.168.1.20:8000."; return@PrimaryButton }
                 testing = true
                 scope.launch {
-                    status = try {
+                    status = if (LocalNetwork.needsPermission(url) && access.blocked && url == container.sessions.current.server) {
+                        access.request()
+                        false to "Android needs the Nearby devices permission to reach servers on your local network."
+                    } else try {
                         true to "Connected · " + container.api.health(url).summary
                     } catch (e: Exception) {
-                        false to (e.message ?: "Can't reach the server.")
+                        false to listOfNotNull(e.message ?: "Can't reach the server.", e.cause?.message).joinToString("\n")
                     }
                     testing = false
                 }

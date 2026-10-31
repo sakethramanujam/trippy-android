@@ -64,6 +64,7 @@ import kotlinx.coroutines.launch
 import samalabs.trippy.R
 import samalabs.trippy.data.AuthValidation
 import samalabs.trippy.ui.LocalContainer
+import samalabs.trippy.ui.LocalNetworkAccess
 import samalabs.trippy.ui.components.AuthField
 import samalabs.trippy.ui.components.FormBanner
 import samalabs.trippy.ui.components.InfoBanner
@@ -82,7 +83,8 @@ fun OnboardingFlow() {
     var step by rememberSaveable { mutableStateOf(Step.Welcome) }
     var showServer by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) { status.refresh() }
+    val access = LocalNetworkAccess.current
+    LaunchedEffect(access.epoch, access.blocked) { status.refresh(access.blocked) }
     BackHandler(enabled = step != Step.Welcome) { step = Step.Welcome }
 
     Box(Modifier.fillMaxSize().background(TColor.canvas)) {
