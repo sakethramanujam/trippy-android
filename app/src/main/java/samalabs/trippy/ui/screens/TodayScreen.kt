@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -119,6 +120,10 @@ fun TodayScreen(nav: Navigator, unreadEmails: Int = 0) {
                 Column(Modifier.weight(1f)) {
                     Text("Today", style = TType.largeTitle, color = TColor.textPrimary)
                     Text(Fmt.dayYear(now), style = TType.callout, color = TColor.textSecondary)
+                    if (state.offline) Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(androidx.compose.material.icons.Icons.Filled.CloudOff, null, tint = TColor.orange, modifier = Modifier.size(14.dp))
+                        Text("  " + Fmt.offlineLine(state.lastSynced, System.currentTimeMillis()), style = TType.footnote, color = TColor.orange)
+                    }
                 }
                 Box(Modifier.padding(top = 6.dp).plainClick { nav.push(Route.Account) }) {
                     InitialsAvatar(session?.profile?.initialsOrGuess ?: "?", 38, dot = unreadEmails > 0)
