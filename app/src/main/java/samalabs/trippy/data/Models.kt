@@ -141,6 +141,21 @@ data class ApiLodging(
     @SerialName("taxes_fees") val taxesFees: Double? = null,
     @SerialName("loyalty_program") val loyaltyProgram: String? = null,
     @SerialName("stay_status") val stayStatus: String? = null,
+    @SerialName("check_in_tz") val checkInTz: String? = null,
+    @SerialName("check_out_tz") val checkOutTz: String? = null,
+    @SerialName("loyalty_points") val loyaltyPoints: Int? = null,
+    val status: String? = null,
+)
+
+@Serializable
+data class ApiActivity(
+    val id: Int,
+    @SerialName("trip_id") val tripId: Int? = null,
+    val title: String = "",
+    val description: String? = null,
+    @SerialName("start_time") val startTime: String? = null,
+    @SerialName("end_time") val endTime: String? = null,
+    @SerialName("location_map_link") val mapLink: String? = null,
 )
 
 @Serializable
@@ -173,6 +188,9 @@ data class ApiRentalCar(
     val cost: Double? = null,
     val currency: String? = null,
     @SerialName("fuel_type") val fuelType: String? = null,
+    @SerialName("date_approx") val dateApprox: Boolean? = null,
+    @SerialName("pickup_odometer") val pickupOdometer: Double? = null,
+    @SerialName("dropoff_odometer") val dropoffOdometer: Double? = null,
     @SerialName("booking_source") val bookingSource: String? = null,
     val notes: String? = null,
 )
@@ -214,6 +232,7 @@ data class ApiTrip(
     @SerialName("rental_cars") val rentalCars: List<ApiRentalCar> = emptyList(),
     val lodgings: List<ApiLodging> = emptyList(),
     val participants: List<ApiParticipant> = emptyList(),
+    val activities: List<ApiActivity> = emptyList(),
 )
 
 @Serializable

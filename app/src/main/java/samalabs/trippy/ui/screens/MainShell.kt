@@ -1,35 +1,87 @@
 package samalabs.trippy.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import samalabs.trippy.ui.LocalContainer
-import samalabs.trippy.ui.components.PrimaryButton
 import samalabs.trippy.ui.theme.TColor
-import samalabs.trippy.ui.theme.TType
+import java.time.LocalDateTime
+
+/** Where the user is. A plain back stack: the app is small and every screen is one level deep. */
+sealed interface Route {
+    data object Trips : Route
+    data class Trip(val id: Int) : Route
+    data object Account : Route
+}
+
+class Navigator {
+    val stack = mutableStateListOf<Route>(Route.Trips)
+    val top: Route get() = stack.last()
+    fun push(r: Route) { stack.add(r) }
+    fun pop(): Boolean = if (stack.size > 1) { stack.removeAt(stack.lastIndex); true } else false
+}
+
+/** A clock that ticks every 30 s so countdowns stay live. */
+@Composable
+fun rememberNow(): LocalDateTime {
+    var now by remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(Unit) { while (true) { delay(30_000); now = LocalDateTime.now() } }
+    return now
+}
 
 @Composable
 fun MainShell() {
     val container = LocalContainer.current
     val session by container.sessions.session.collectAsState()
-    val scope = rememberCoroutineScope()
-    Box(Modifier.fillMaxSize().background(TColor.canvas).safeDrawingPadding().padding(20.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("My Trips", style = TType.largeTitle, color = TColor.textPrimary)
-            Text("Signed in as ${session?.profile?.displayName}", style = TType.callout, color = TColor.textSecondary)
-            PrimaryButton("Log out", color = TColor.surfaceRaised, onClick = { scope.launch { container.auth.logOut() } })
+    val state by container.trips.state.collectAsState()
+    val nav = remember { Navigator() }
+    val now = rememberNow()
+    LaunchedEffect(Unit) {
+        container.trips.clear()
+        container.trips.refresh()
+    }
+    BackHandler(enabled = nav.stack.size > 1) { nav.pop() }
+    val depth = nav.stack.size
+    Box(Modifier.fillMaxSize().background(TColor.canvas)) {
+        AnimatedContent(
+            targetState = nav.top to depth, label = "nav",
+            transitionSpec = {
+                val forward = targetState.second >= initialState.second
+                (slideInHorizontally { if (forward) it / 3 else -it / 3 } + fadeIn()) togetherWith
+                    (slideOutHorizontally { if (forward) -it / 4 else it / 4 } + fadeOut())
+            },
+        ) { (route, _) ->
+            when (route) {
+                Route.Trips -> TripsScreen(
+                    state = state,
+                    initials = session?.profile?.initialsOrGuess ?: "?",
+                    now = now,
+                    actions = TripsListActions(
+                        open = { nav.push(Route.Trip(it)) },
+                        refresh = { container.trips.refresh() },
+                        account = { nav.push(Route.Account) },
+                    ),
+                )
+                is Route.Trip -> TripPlaceholder(route.id, onBack = { nav.pop() })
+                Route.Account -> AccountScreen(onBack = { nav.pop() })
+            }
         }
     }
 }

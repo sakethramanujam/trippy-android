@@ -18,6 +18,7 @@ object TColor {
     val surface = Color(0xFF161618)
     val surfaceRaised = Color(0xFF242426)
     val surfaceHigh = Color(0xFF323235)
+    val surfaceSheet = Color(0xFF1C1C1E)
     val hairline = Color.White.copy(alpha = 0.08f)
     val divider = Color.White.copy(alpha = 0.11f)
     val textPrimary = Color.White
