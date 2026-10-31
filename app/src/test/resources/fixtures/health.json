@@ -1,0 +1,1 @@
+{"status":"healthy","service":"trippy","version":"0.2.0","auth":"required","signup":"open","password_reset":"server-log","inbound":{"enabled":false,"mode":"off","addresses":"sender-only","last_poll":null,"ok":null}}
