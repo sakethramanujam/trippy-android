@@ -16,6 +16,7 @@ class AppContainer(app: Application) {
     val trips = TripsRepository(api)
     val journeys = JourneysRepository(api, trips)
     val trash = TrashRepository(api, trips, journeys)
+    val inbound = samalabs.trippy.data.InboundRepository(api)
 
     init {
         api.onSessionExpired = { sessions.signOut() }

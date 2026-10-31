@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.MarkEmailUnread
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material3.AlertDialog
@@ -82,6 +83,8 @@ fun ProfileScreen(nav: Navigator, settingsRows: @Composable ColumnScope.() -> Un
     var showDelete by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
     var showJoin by remember { mutableStateOf(false) }
+    val unread by c.inbound.unread.collectAsState()
+    LaunchedEffect(Unit) { c.inbound.refreshBadge() }
     val dirty = p != null && (name.trim() != p.name.orEmpty() || airport.uppercase() != p.homeAirport.orEmpty())
     val server = session?.server ?: c.sessions.current.server
 
@@ -114,12 +117,15 @@ fun ProfileScreen(nav: Navigator, settingsRows: @Composable ColumnScope.() -> Un
                     }
                 })
             }
+            if (p != null) InboundAddressCard()
             cards()
             Column {
                 HorizontalDivider(color = TColor.divider)
                 ProfileTile(Icons.Filled.Download, "Import trips", TColor.green) { nav.push(ImportRoute(null)) }
                 TileDivider()
                 ProfileTile(Icons.Filled.PersonAdd, "Join with invite code", TColor.blue) { showJoin = true }
+                TileDivider()
+                ProfileTile(Icons.Filled.MarkEmailUnread, "Forwarded emails", TColor.purple, badge = unread) { nav.push(InboxRoute) }
                 settingsRows()
                 TileDivider()
                 ProfileTile(Icons.Filled.Delete, "Recently Deleted", TColor.red) { nav.push(Route.Trash) }
@@ -151,7 +157,7 @@ fun ProfileScreen(nav: Navigator, settingsRows: @Composable ColumnScope.() -> Un
         onDismissRequest = { confirmLogout = false }, containerColor = TColor.surfaceRaised,
         title = { Text("Log out of Trippy?") },
         text = { Text("This signs you out on every device.") },
-        confirmButton = { TextButton({ confirmLogout = false; scope.launch { c.trips.clear(); c.auth.logOut() } }) { Text("Log out", color = TColor.red) } },
+        confirmButton = { TextButton({ confirmLogout = false; scope.launch { c.trips.clear(); c.inbound.clear(); c.auth.logOut() } }) { Text("Log out", color = TColor.red) } },
         dismissButton = { TextButton({ confirmLogout = false }) { Text("Cancel") } },
     )
 }
