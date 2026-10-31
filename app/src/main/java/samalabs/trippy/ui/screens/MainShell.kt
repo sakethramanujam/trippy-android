@@ -214,7 +214,7 @@ fun MainShell() {
                     ?.let { StayDetailScreen(it, now, onClose = { nav.pop() }) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
                 is Route.Rental -> (state.rentals + state.trips.flatMap { it.rentalCars }).firstOrNull { it.id == route.id }
                     ?.let { RentalDetailScreen(it, now, onClose = { nav.pop() }, extras = rentalDetailExtras(it, now)) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
-                Route.Account -> ProfileScreen(nav)
+                Route.Account -> ProfileScreen(nav, cards = { DeviceSettings() })
                 Route.Trash -> RecentlyDeletedScreen(onBack = { nav.pop() })
                 else -> ToolRouteScreen(route, nav)
             }
