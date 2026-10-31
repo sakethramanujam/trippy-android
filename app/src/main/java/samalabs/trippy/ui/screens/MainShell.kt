@@ -78,7 +78,7 @@ fun MainShell() {
     val state by container.trips.state.collectAsState()
     val suggestions by container.journeys.suggestions.collectAsState()
     val journeyDetails by container.journeys.details.collectAsState()
-    val nav = remember { Navigator() }
+    val nav = remember { Navigator().apply { stack[0] = homeRoute } }
     val context = LocalContext.current
     val shellScope = rememberCoroutineScope()
     fun toastIfError(err: String?) { err?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() } }
