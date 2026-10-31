@@ -40,6 +40,7 @@ class ApiClient(
     suspend fun put(path: String, json: String? = null): String = send("PUT", path, json ?: "{}")
     suspend fun patch(path: String, json: String): String = send("PATCH", path, json)
     suspend fun delete(path: String): String = send("DELETE", path, null)
+    suspend fun delete(path: String, json: String): String = send("DELETE", path, json)
 
     suspend fun health(baseUrl: String): ServerHealth = withContext(Dispatchers.IO) {
         val req = Request.Builder().url("$baseUrl/health").header("Cache-Control", "no-cache").build()

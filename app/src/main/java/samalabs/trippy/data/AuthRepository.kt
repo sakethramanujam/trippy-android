@@ -35,6 +35,26 @@ class AuthRepository(private val api: ApiClient, private val sessions: SessionSt
         sessions.signOut()
     }
 
+    /** `PATCH /me`; the saved profile replaces the cached one. */
+    suspend fun updateProfile(name: String, homeAirport: String) {
+        val body = TrippyJson.encodeToString(ProfileUpdate.serializer(), ProfileUpdate(name, homeAirport.trim().uppercase()))
+        sessions.updateProfile(TrippyJson.decodeFromString<Profile>(api.patch("/me", body)))
+    }
+
+    /** `POST /me/password`: the server signs out other devices and returns fresh tokens for this one. */
+    suspend fun changePassword(current: String, new: String) {
+        val body = TrippyJson.encodeToString(PasswordChange.serializer(), PasswordChange(current, new))
+        val auth = TrippyJson.decodeFromString<AuthResponse>(api.post("/me/password", body))
+        val profile = auth.user ?: sessions.current.profile
+        if (profile != null) sessions.signIn(auth, profile) else sessions.updateTokens(auth.accessToken, auth.refreshToken)
+    }
+
+    /** `DELETE /me {password}`, then forget the session. */
+    suspend fun deleteAccount(password: String) {
+        api.delete("/me", TrippyJson.encodeToString(PasswordOnly.serializer(), PasswordOnly(password)))
+        sessions.signOut()
+    }
+
     private suspend fun finish(json: String) {
         val auth = TrippyJson.decodeFromString<AuthResponse>(json)
         val profile = auth.user ?: run {
@@ -44,6 +64,15 @@ class AuthRepository(private val api: ApiClient, private val sessions: SessionSt
         sessions.signIn(auth, profile)
     }
 }
+
+@kotlinx.serialization.Serializable
+data class ProfileUpdate(val name: String, @kotlinx.serialization.SerialName("home_airport") val homeAirport: String)
+
+@kotlinx.serialization.Serializable
+data class PasswordChange(@kotlinx.serialization.SerialName("current_password") val currentPassword: String, @kotlinx.serialization.SerialName("new_password") val newPassword: String)
+
+@kotlinx.serialization.Serializable
+data class PasswordOnly(val password: String)
 
 /** Client-side checks that match the iOS app, so both reject the same input. */
 object AuthValidation {
