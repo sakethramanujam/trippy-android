@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.TireRepair
 import androidx.compose.material.icons.filled.WbTwilight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -31,6 +32,7 @@ import samalabs.trippy.ui.theme.TType
 /** Tab roots, as on iOS. Tabs swap the bottom of the nav stack. */
 data object TodayRoute : Route
 data object RentalsRoute : Route
+data object DriversLogRoute : Route
 
 private class RootTab(val title: String, val icon: ImageVector, val route: Route)
 
@@ -38,6 +40,7 @@ private val rootTabs = listOf(
     RootTab("Today", Icons.Filled.WbTwilight, TodayRoute),
     RootTab("Rentals", Icons.Filled.DirectionsCar, RentalsRoute),
     RootTab("Trips", Icons.Filled.Map, Route.Trips),
+    RootTab("Driver's Log", Icons.Filled.TireRepair, DriversLogRoute),
 )
 
 /** The first tab; back from any other tab root returns here. */
