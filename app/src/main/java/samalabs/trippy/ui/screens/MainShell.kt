@@ -119,6 +119,7 @@ fun MainShell() {
                         open = { nav.push(Route.Trip(it)) },
                         refresh = { container.trips.refresh(); container.journeys.loadSuggestions() },
                         account = { nav.push(Route.Account) },
+                        search = { nav.push(SearchRoute) },
                     )
                     val snapsById = remember(state.trips, state.rentals, now.toLocalDate()) {
                         state.trips.associate { it.id to TripSnapshot(it, state.rentals, now) }
@@ -215,7 +216,7 @@ fun MainShell() {
                     ?.let { RentalDetailScreen(it, now, onClose = { nav.pop() }, extras = rentalDetailExtras(it, now)) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
                 Route.Account -> ProfileScreen(nav)
                 Route.Trash -> RecentlyDeletedScreen(onBack = { nav.pop() })
-                else -> MoreRouteScreen(route, nav)
+                else -> ToolRouteScreen(route, nav)
             }
         }
         if (depth == 1 && !listUi.selecting) RootTabBar(nav, Modifier.align(Alignment.BottomCenter))
