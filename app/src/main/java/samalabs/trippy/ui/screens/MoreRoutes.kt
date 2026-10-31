@@ -15,6 +15,7 @@ fun MoreRouteScreen(route: Route, nav: Navigator) {
         is ImportRoute -> ImportScreen(route.tripId, onBack = { nav.pop() })
         is StoryRoute -> StoryScreen(route.tripId, onBack = { nav.pop() }, onShare = { nav.push(ShareCardRoute(route.tripId)) })
         is ShareCardRoute -> ShareCardScreen(route.tripId, route.year, onBack = { nav.pop() })
+        RentalsRoute -> RentalsScreen(onOpen = { nav.push(Route.Rental(it)) })
         else -> Unit
     }
 }

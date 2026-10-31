@@ -193,6 +193,7 @@ data class ApiRentalCar(
     @SerialName("dropoff_odometer") val dropoffOdometer: Double? = null,
     @SerialName("booking_source") val bookingSource: String? = null,
     val notes: String? = null,
+    @SerialName("photo_url") val photoUrl: String? = null,
 )
 
 @Serializable

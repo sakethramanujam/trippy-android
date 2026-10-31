@@ -43,6 +43,7 @@ import samalabs.trippy.domain.*
 import samalabs.trippy.ui.components.BrandTile
 import samalabs.trippy.ui.components.Brands
 import samalabs.trippy.ui.components.CircleIcon
+import samalabs.trippy.ui.components.CompanyBadge
 import samalabs.trippy.ui.components.Fact
 import samalabs.trippy.ui.components.FactKind
 import samalabs.trippy.ui.components.FactList
@@ -232,7 +233,7 @@ fun RentalDetailScreen(r: ApiRentalCar, now: LocalDateTime, onClose: () -> Unit,
     }
     DetailPage(onClose) {
         val micro = listOfNotNull(r.companyName.uppercase(), r.confirmationText, p?.let { Fmt.day(it).uppercase() }).joinToString(" • ")
-        DetailHeader({ BrandTile(r.companyName, Brands.rental(r)) }, r.vehicleName, micro, onClose)
+        DetailHeader({ CompanyBadge(r.company, 44) }, r.vehicleName, micro, onClose)
         StatusBanner(title, r.costText, color)
         Endpoint(Icons.Filled.NorthEast, r.pickupDisplayCode, r.pickupDisplayCity, p, now, r.licensePlate?.let { it to "Plate" }, Icons.Filled.DirectionsCar)
         r.rentalDays?.let {
