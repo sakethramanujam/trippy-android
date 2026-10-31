@@ -67,6 +67,7 @@ fun flightExtras(f: ApiFlight, now: LocalDateTime) = BookingExtras(
             }
         }
     },
+    afterActions = { LiveStatusCard(f) },
 )
 
 fun stayExtras(h: ApiLodging) = BookingExtras(
