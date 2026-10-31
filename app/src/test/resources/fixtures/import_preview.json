@@ -1,0 +1,4 @@
+{"needs_mapping":false,"source":"ics","new_count":1,"stats":{"events":3},
+ "items":[{"kind":"flight","summary":"UA 123 SFO → JFK, Mar 1","source":"ics","confidence":"high","warnings":[],"ref":"x","duplicate_of":null,"duplicate_in_batch":null,"fields":{"flight_number":"UA123","departure_airport":"SFO","cost":null}},
+          {"kind":"lodging","summary":"Hotel Example","source":"ics","confidence":"low","warnings":["Check the dates"],"duplicate_of":{"kind":"lodging","id":9,"in_trash":true},"duplicate_in_batch":null,"fields":{"name":"Hotel Example"}},
+          {"kind":"flight","summary":"UA 123 again","confidence":"high","duplicate_of":null,"duplicate_in_batch":0,"fields":{}}]}

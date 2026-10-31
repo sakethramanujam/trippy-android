@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.delay
@@ -109,6 +110,7 @@ fun MainShell() {
                                     scope.launch { container.trips.setPinned(trip.id, !trip.pinned) }
                                 },
                                 MenuAction("Expenses", Icons.Filled.AccountBalanceWallet) { nav.push(ExpensesRoute(trip.id)) },
+                                MenuAction("Import into trip", Icons.Filled.FileOpen) { nav.push(ImportRoute(trip.id)) },
                             ),
                         ))
                     }
@@ -119,7 +121,7 @@ fun MainShell() {
                     ?.let { StayDetailScreen(it, now, onClose = { nav.pop() }) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
                 is Route.Rental -> (state.rentals + state.trips.flatMap { it.rentalCars }).firstOrNull { it.id == route.id }
                     ?.let { RentalDetailScreen(it, now, onClose = { nav.pop() }) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
-                Route.Account -> AccountScreen(onBack = { nav.pop() })
+                Route.Account -> AccountScreen(onBack = { nav.pop() }, extra = { AccountExtras { nav.push(it) } })
                 else -> MoreRouteScreen(route, nav)
             }
         }
