@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.delay
@@ -109,6 +111,8 @@ fun MainShell() {
                                 MenuAction(if (trip.pinned) "Unpin" else "Pin to top", Icons.Filled.PushPin) {
                                     scope.launch { container.trips.setPinned(trip.id, !trip.pinned) }
                                 },
+                                MenuAction("Story", Icons.Filled.AutoStories) { nav.push(StoryRoute(trip.id)) },
+                                MenuAction("Share card", Icons.Filled.IosShare) { nav.push(ShareCardRoute(trip.id)) },
                                 MenuAction("Expenses", Icons.Filled.AccountBalanceWallet) { nav.push(ExpensesRoute(trip.id)) },
                                 MenuAction("Import into trip", Icons.Filled.FileOpen) { nav.push(ImportRoute(trip.id)) },
                             ),

@@ -1,0 +1,10 @@
+{"trip_id": 7, "generated_title": "Lisbon & Porto", "start_date": "2026-03-01T09:00:00", "end_date": "2026-03-08T18:00:00",
+ "items": [
+  {"key": "travelers", "kind": "travelers", "date": "2026-03-01T09:00:00", "end_date": null, "title": "2 travelers", "subtitle": "Ana, Ben", "place": null, "metric": null, "miles": null, "brand": null, "code": null, "people": [{"id": 1, "name": "Ana"}, {"id": 2, "name": "Ben"}], "from_place": null, "to_place": null, "money": false, "day": 1, "hidden": false, "note": null, "photos": []},
+  {"key": "flight:3", "kind": "flight", "date": "2026-03-01T09:00:00", "end_date": "2026-03-01T21:00:00", "title": "San Francisco to Lisbon", "subtitle": "TP 238 · 11h", "place": {"code": "LIS", "city": "Lisbon", "country": "PT", "lat": 38.77, "lng": -9.13}, "from_place": {"code": "SFO", "city": "San Francisco", "country": "US", "lat": 37.62, "lng": -122.38}, "to_place": null, "metric": "5,671 mi", "miles": 5671.2, "brand": "TAP", "code": "TP 238", "people": null, "money": false, "day": 1, "hidden": true, "note": "Window seat", "photos": ["a.jpg"]}
+ ],
+ "route": [{"code": "SFO", "city": "San Francisco", "country": "US", "lat": 37.62, "lng": -122.38}, {"code": "LIS", "city": "Lisbon", "country": "PT", "lat": 38.77, "lng": -9.13}, {"code": null, "city": "Porto", "country": "PT", "lat": 41.15, "lng": -8.61}],
+ "travelers": [{"id": 1, "name": "Ana"}, {"id": 2, "name": "Ben"}],
+ "highlights": [{"icon": "airplane", "label": "Longest flight", "value": "SFO → LIS", "detail": "5,671 mi"}, {"icon": "creditcard.fill", "label": "Biggest spend", "money": true, "value": "$420.00", "detail": "Hotel"}],
+ "stats": {"days": 8, "places": 3, "countries": 2, "flights": 2, "rentals": 0, "stays": 2, "nights": 7, "flight_miles": 11342, "drive_miles": 0, "distance_miles": 11342, "travelers": 2, "spend": {"USD": 1240.5}, "stay_spend": {}, "spend_text": "$1,240.50", "cities": ["Lisbon", "Porto", "San Francisco"]},
+ "title": null, "subtitle": null, "theme": "ocean", "cover_photo": null, "edited": false, "updated_at": null}

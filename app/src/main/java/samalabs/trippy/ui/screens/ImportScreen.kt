@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.Hotel
@@ -426,6 +427,7 @@ private fun PreviewStage(items: List<ImportItem>, selected: Set<Int>, busy: Bool
 fun AccountExtras(open: (Route) -> Unit) {
     Column(Modifier.trippyCard()) {
         AccountLink("Import bookings", Icons.Filled.FileOpen, TColor.blue) { open(ImportRoute(null)) }
+        AccountLink("Year in travel", Icons.Filled.Public, TColor.purple) { open(ShareCardRoute(null)) }
     }
 }
 
