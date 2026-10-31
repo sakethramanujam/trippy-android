@@ -323,48 +323,6 @@ data class JourneyCreate(val title: String, @SerialName("trip_ids") val tripIds:
 data class JourneyAddTrips(@SerialName("trip_ids") val tripIds: List<Int>)
 
 @Serializable
-data class JourneyAfterDelete(
-    val id: Int,
-    val title: String = "",
-    @SerialName("trips_left") val tripsLeft: Int = 0,
-    @SerialName("journey_deleted") val journeyDeleted: Boolean = false,
-)
-
-@Serializable
-data class DeletePreview(
-    @SerialName("trip_id") val tripId: Int,
-    val title: String = "",
-    @SerialName("is_owner") val isOwner: Boolean = true,
-    val action: String = "delete",
-    val counts: Map<String, Int> = emptyMap(),
-    val unsettled: Boolean = false,
-    @SerialName("unsettled_people") val unsettledPeople: Int = 0,
-    @SerialName("unsettled_cents") val unsettledCents: Long = 0,
-    val journey: JourneyAfterDelete? = null,
-    @SerialName("keep_days") val keepDays: Int = 30,
-)
-
-@Serializable
-data class BulkDeleteRequest(@SerialName("trip_ids") val tripIds: List<Int>, val permanent: Boolean = false)
-
-@Serializable
-data class BulkDeleteResult(@SerialName("keep_days") val keepDays: Int = 30)
-
-@Serializable
-data class TrashedTrip(
-    val id: Int,
-    val title: String = "",
-    @SerialName("start_date") val startDate: String? = null,
-    @SerialName("end_date") val endDate: String? = null,
-    @SerialName("deleted_at") val deletedAt: String? = null,
-    @SerialName("purge_at") val purgeAt: String? = null,
-    val counts: Map<String, Int> = emptyMap(),
-)
-
-@Serializable
-data class TrashList(@SerialName("keep_days") val keepDays: Int = 30, val trips: List<TrashedTrip> = emptyList())
-
-@Serializable
 data class TripIds(@SerialName("trip_ids") val tripIds: List<Int>)
 
 @Serializable

@@ -1,5 +1,11 @@
 package samalabs.trippy.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.Alignment
+import kotlinx.coroutines.CoroutineScope
+import samalabs.trippy.AppContainer
+import samalabs.trippy.data.ApiTrip
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -47,6 +53,7 @@ sealed interface Route {
     data class Stay(val tripId: Int, val id: Int) : Route
     data class Rental(val id: Int) : Route
     data class Journey(val id: Int) : Route
+    data object Trash : Route
 }
 
 class Navigator {
@@ -91,6 +98,11 @@ fun MainShell() {
     }
     BackHandler(enabled = nav.stack.size > 1) { nav.pop() }
     val depth = nav.stack.size
+    val myId = session?.profile?.id
+    val owns: (ApiTrip) -> Boolean = { t -> t.ownerId == null || t.ownerId == myId }
+    var deleting by remember { mutableStateOf<List<Int>?>(null) }
+    val listUi = remember { TripListUi() }
+    fun createJourney(ids: List<Int>) { shellScope.launch { val (id, err) = container.journeys.create(null, ids); toastIfError(err); if (err == null && id != null) nav.push(Route.Journey(id)) } }
     Box(Modifier.fillMaxSize().background(TColor.canvas)) {
         AnimatedContent(
             targetState = nav.top to depth, label = "nav",
@@ -122,7 +134,14 @@ fun MainShell() {
                         actions = listActions,
                         journeyTripIds = remember(state.journeys) { state.journeys.flatMap { it.tripIds }.toSet() },
                         journeysSection = { row -> journeysSection(state.journeys, suggestions, snapsById, now, journeyActions, listActions, row) },
+                        row = { s, content -> TripActionRow(listUi, s, rowCallbacks(owns, nav, shellScope, container) { deleting = it }, content) },
                     )
+                    if (listUi.selecting) Box(Modifier.fillMaxSize(), Alignment.BottomCenter) { SelectionBar(listUi, delete = { deleting = it }) }
+                    listUi.linking?.let { ids ->
+                        LinkTripsFlow(ids, state.journeys, state.trips, onDismiss = { listUi.linking = null },
+                            addTo = { jid, l -> listUi.linking = null; listUi.endSelect(); shellScope.launch { toastIfError(container.journeys.addTrips(jid, l)) } },
+                            create = { l -> listUi.linking = null; listUi.endSelect(); createJourney(l) })
+                    }
                 }
                 is Route.Journey -> {
                     LaunchedEffect(route.id) { container.journeys.load(route.id)?.let { if (journeyDetails[route.id] == null) toastIfError(it) } }
@@ -163,6 +182,8 @@ fun MainShell() {
                                 else if (journey.isOwner) add(MenuAction("Remove from journey", Icons.Filled.RemoveCircleOutline, destructive = true) {
                                     shellScope.launch { toastIfError(container.journeys.removeTrip(journey.id, trip.id)) }
                                 })
+                                if (owns(trip)) add(MenuAction("Delete trip…", Icons.Filled.Delete, destructive = true) { deleting = listOf(trip.id) })
+                                else add(MenuAction("Leave trip…", Icons.AutoMirrored.Filled.ExitToApp, destructive = true) { deleting = listOf(trip.id) })
                             },
                         ))
                         if (choosing) JourneyChooserDialog(
@@ -188,9 +209,30 @@ fun MainShell() {
                     ?.let { StayDetailScreen(it, now, onClose = { nav.pop() }) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
                 is Route.Rental -> (state.rentals + state.trips.flatMap { it.rentalCars }).firstOrNull { it.id == route.id }
                     ?.let { RentalDetailScreen(it, now, onClose = { nav.pop() }) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
-                Route.Account -> AccountScreen(onBack = { nav.pop() }, extra = { AccountExtras { nav.push(it) } })
+                Route.Account -> AccountScreen(onBack = { nav.pop() }, extra = {
+                    AccountExtras { nav.push(it) }
+                    AccountLink("Recently Deleted", Icons.Filled.Delete, TColor.red) { nav.push(Route.Trash) }
+                })
+                Route.Trash -> RecentlyDeletedScreen(onBack = { nav.pop() })
                 else -> MoreRouteScreen(route, nav)
             }
         }
+        UndoToastHost(Modifier.align(Alignment.BottomCenter))
+    }
+    deleting?.let { ids ->
+        DeleteTripSheet(ids, onDismiss = { deleting = null }) {
+            deleting = null
+            listUi.endSelect()
+            val idx = nav.stack.indexOfFirst { it is Route.Trip && it.id in ids }
+            if (idx > 0) while (nav.stack.size > idx) nav.pop()
+        }
     }
 }
+
+private fun rowCallbacks(owns: (ApiTrip) -> Boolean, nav: Navigator, scope: CoroutineScope, c: AppContainer, delete: (List<Int>) -> Unit) = TripRowCallbacks(
+    owns = owns,
+    pin = { t -> scope.launch { c.trips.setPinned(t.id, !t.pinned) } },
+    share = { nav.push(ShareCardRoute(it)) },
+    story = { nav.push(StoryRoute(it)) },
+    delete = delete,
+)

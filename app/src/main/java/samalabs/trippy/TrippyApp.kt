@@ -6,6 +6,7 @@ import samalabs.trippy.data.AuthRepository
 import samalabs.trippy.data.SessionStore
 import samalabs.trippy.data.JourneysRepository
 import samalabs.trippy.data.TripsRepository
+import samalabs.trippy.data.TrashRepository
 
 /** Hand-wired dependencies; small enough that a DI framework would only add weight. */
 class AppContainer(app: Application) {
@@ -14,6 +15,7 @@ class AppContainer(app: Application) {
     val auth = AuthRepository(api, sessions)
     val trips = TripsRepository(api)
     val journeys = JourneysRepository(api, trips)
+    val trash = TrashRepository(api, trips, journeys)
 
     init {
         api.onSessionExpired = { sessions.signOut() }
