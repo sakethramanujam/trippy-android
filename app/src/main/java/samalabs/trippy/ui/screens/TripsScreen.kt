@@ -1,5 +1,7 @@
 package samalabs.trippy.ui.screens
 
+import samalabs.trippy.domain.Fmt
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
@@ -136,7 +138,7 @@ private fun SheetHeader(snaps: List<TripSnapshot>, initials: String, state: Trip
         if (state.offline) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.CloudOff, null, tint = TColor.orange, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Offline · showing saved trips", style = TType.footnote, color = TColor.orange)
+            Text(Fmt.offlineLine(state.lastSynced, System.currentTimeMillis()), style = TType.footnote, color = TColor.orange)
         }
         state.error?.let { FormBanner(it, Modifier.padding(top = 10.dp)) }
     }

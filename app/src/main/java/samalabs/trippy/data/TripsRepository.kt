@@ -23,13 +23,36 @@ data class TripsState(
 )
 
 /** The signed-in user's trips, rentals and journeys, kept in one observable state. */
-class TripsRepository(private val api: ApiClient) {
+class TripsRepository(
+    private val api: ApiClient,
+    private val cache: ResponseCache = ResponseCache.None,
+    /** Which account's copy to read and write; see [Session.scope]. */
+    private val scope: () -> String = { "" },
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
     private val _state = MutableStateFlow(TripsState())
     val state: StateFlow<TripsState> = _state.asStateFlow()
 
     fun trip(id: Int): ApiTrip? = _state.value.trips.firstOrNull { it.id == id }
 
+    /** Fill the lists from the saved copy so the app opens instantly and works offline. False if there is none. */
+    suspend fun prime(): Boolean {
+        val key = scope()
+        val t = cache.read(key, TRIPS) ?: return false
+        val trips = runCatching { TrippyJson.decodeFromString(ListSerializer(ApiTrip.serializer()), t.body) }.getOrNull() ?: return false
+        val rentals = cache.read(key, RENTALS)?.let { runCatching { TrippyJson.decodeFromString(ListSerializer(ApiRentalCar.serializer()), it.body) }.getOrNull() }
+        val journeys = cache.read(key, JOURNEYS)?.let { runCatching { TrippyJson.decodeFromString(ListSerializer(ApiJourney.serializer()), it.body) }.getOrNull() }
+        _state.update {
+            if (it.lastSynced != null && it.lastSynced >= t.savedAt) it
+            else it.copy(trips = trips, rentals = rentals.orEmpty(), journeys = journeys.orEmpty(), loaded = true, lastSynced = t.savedAt)
+        }
+        return true
+    }
+
+    suspend fun wipeCache() = cache.clear()
+
     suspend fun refresh() {
+        if (!_state.value.loaded) prime()
         _state.update { it.copy(refreshing = true) }
         try {
             coroutineScope {
@@ -43,11 +66,12 @@ class TripsRepository(private val api: ApiClient) {
                     it.copy(
                         trips = t, rentals = r ?: it.rentals, journeys = j ?: it.journeys,
                         loaded = true, refreshing = false, offline = false, error = null,
-                        lastSynced = System.currentTimeMillis(),
+                        lastSynced = clock(),
                     )
                 }
             }
         } catch (e: OfflineException) {
+            if (_state.value.trips.isEmpty()) prime()
             _state.update { it.copy(refreshing = false, offline = true, loaded = true, error = null) }
         } catch (e: SessionExpiredException) {
             _state.update { it.copy(refreshing = false) }
@@ -70,8 +94,14 @@ class TripsRepository(private val api: ApiClient) {
 
     fun clear() { _state.value = TripsState() }
 
-    private suspend fun <T> fetch(path: String, serializer: KSerializer<T>): T =
-        TrippyJson.decodeFromString(serializer, api.get(path))
+    /** Decode first, then save: a body the app can't read never replaces a good copy. */
+    private suspend fun <T> fetch(path: String, serializer: KSerializer<T>): T {
+        val key = scope()
+        val body = api.get(path)
+        val value = TrippyJson.decodeFromString(serializer, body)
+        cache.write(CachedResponse(key, path, body, clock()))
+        return value
+    }
 
     companion object {
         const val TRIPS = "/trips/?limit=500"

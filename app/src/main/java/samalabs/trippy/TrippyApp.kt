@@ -7,19 +7,23 @@ import samalabs.trippy.data.SessionStore
 import samalabs.trippy.data.JourneysRepository
 import samalabs.trippy.data.TripsRepository
 import samalabs.trippy.data.TrashRepository
+import samalabs.trippy.data.RoomResponseCache
+import samalabs.trippy.data.TrippyDatabase
 
 /** Hand-wired dependencies; small enough that a DI framework would only add weight. */
 class AppContainer(app: Application) {
     val sessions = SessionStore(app)
     val api = ApiClient(sessions)
     val auth = AuthRepository(api, sessions)
-    val trips = TripsRepository(api)
+    val database = TrippyDatabase.open(app)
+    val trips = TripsRepository(api, RoomResponseCache(database.cache()), scope = { sessions.current.scope })
     val journeys = JourneysRepository(api, trips)
     val trash = TrashRepository(api, trips, journeys)
     val inbound = samalabs.trippy.data.InboundRepository(api)
 
     init {
-        api.onSessionExpired = { sessions.signOut() }
+        api.onSessionExpired = { sessions.signOut(); trips.wipeCache() }
+        auth.onSignedOut = { trips.wipeCache() }
     }
 }
 

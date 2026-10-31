@@ -59,6 +59,16 @@ object Fmt {
         return money(amount, currency, decimals = false)
     }
 
+    /** "just now", "5m ago", "3h ago", "2d ago" for "Synced …" captions. */
+    fun ago(thenMillis: Long, nowMillis: Long): String {
+        val s = (nowMillis - thenMillis) / 1000
+        return if (s < 60) "just now" else "${duration(s).substringBefore(' ')} ago"
+    }
+
+    /** The offline line under the title, matching iOS. */
+    fun offlineLine(lastSynced: Long?, nowMillis: Long): String =
+        if (lastSynced == null) "Offline · no saved copy yet" else "Offline · synced ${ago(lastSynced, nowMillis)}"
+
     fun number(value: Double): String = NumberFormat.getIntegerInstance(Locale.US).format(value.roundToLong())
 }
 

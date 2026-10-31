@@ -2,6 +2,8 @@ package samalabs.trippy.data
 
 /** Log in, sign up and log out. Tokens and profile land in [SessionStore]. */
 class AuthRepository(private val api: ApiClient, private val sessions: SessionStore) {
+    /** Wipes the offline copy; set by the app container. */
+    var onSignedOut: suspend () -> Unit = {}
 
     suspend fun logIn(email: String, password: String) {
         val body = TrippyJson.encodeToString(LoginRequest.serializer(), LoginRequest(email.trim(), password))
@@ -33,6 +35,7 @@ class AuthRepository(private val api: ApiClient, private val sessions: SessionSt
             }
         }
         sessions.signOut()
+        onSignedOut()
     }
 
     /** `PATCH /me`; the saved profile replaces the cached one. */
