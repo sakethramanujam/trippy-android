@@ -97,6 +97,17 @@ fun MainShell() {
         container.trips.refresh()
         container.journeys.loadSuggestions()
     }
+    // Showing the saved copy? Refresh as soon as a network comes back.
+    val networkUp = remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+        val cb = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) { networkUp.intValue++ }
+        }
+        runCatching { cm?.registerDefaultNetworkCallback(cb) }
+        onDispose { runCatching { cm?.unregisterNetworkCallback(cb) } }
+    }
+    LaunchedEffect(networkUp.intValue) { if (networkUp.intValue > 0 && container.trips.state.value.offline) container.trips.refresh() }
     BackHandler(enabled = nav.stack.size > 1) { nav.pop() }
     val depth = nav.stack.size
     val myId = session?.profile?.id
