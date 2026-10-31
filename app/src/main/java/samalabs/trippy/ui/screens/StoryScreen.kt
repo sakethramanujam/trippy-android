@@ -1,5 +1,7 @@
 package samalabs.trippy.ui.screens
 
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
@@ -202,7 +204,10 @@ fun StoryScreen(tripId: Int, onBack: () -> Unit, onShare: () -> Unit) {
                 )
             }
         }
-        if (playing) StoryPlayer(s, shownTitle, subtitle, visible, notes, theme) { playing = false }
+        // A full-screen dialog: inside this Column the LazyColumn has already taken all the height.
+        if (playing) Dialog({ playing = false }, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+            StoryPlayer(s, shownTitle, subtitle, visible, notes, theme) { playing = false }
+        }
     }
 
     noteFor?.let { item ->
