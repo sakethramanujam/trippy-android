@@ -1,0 +1,17 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+build/
+/captures
+.externalNativeBuild
+.cxx
+*.jks
+*.keystore
+keystore.properties
+*.apk
+*.aab
+# never commit real exports or personal data
+*.private.json
+/screenshots/raw/
