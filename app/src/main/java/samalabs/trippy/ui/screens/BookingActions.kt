@@ -56,6 +56,7 @@ import java.time.LocalDateTime
 
 /** Flight: check-in card, Directions + Add to Calendar, live status. */
 fun flightExtras(f: ApiFlight, now: LocalDateTime) = BookingExtras(
+    afterTimes = { CheckInCard(f, now) },
     quickActions = {
         val ctx = LocalContext.current
         QuickActions {
