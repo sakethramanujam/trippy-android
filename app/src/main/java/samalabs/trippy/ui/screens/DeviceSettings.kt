@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import samalabs.trippy.ui.LocalContainer
+import samalabs.trippy.ui.components.plainClick
 import samalabs.trippy.ui.components.trippyCard
 import samalabs.trippy.ui.theme.TColor
 import samalabs.trippy.ui.theme.TType
@@ -45,8 +46,13 @@ fun DeviceSettings() {
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) enable() else { on = false; note = "Notifications are off for Trippy in system settings." }
     }
+    val toggle: (Boolean) -> Unit = { want ->
+        if (!want) { c.reminders.disable(); on = false; note = null }
+        else if (Build.VERSION.SDK_INT >= 33 && !c.reminders.permitted) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+        else enable()
+    }
     Column(Modifier.trippyCard()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().plainClick { toggle(!on) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.NotificationsActive, null, tint = TColor.coral, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -55,11 +61,7 @@ fun DeviceSettings() {
             }
             Switch(
                 checked = on,
-                onCheckedChange = { want ->
-                    if (!want) { c.reminders.disable(); on = false; note = null }
-                    else if (Build.VERSION.SDK_INT >= 33 && !c.reminders.permitted) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    else enable()
-                },
+                onCheckedChange = toggle,
                 colors = SwitchDefaults.colors(checkedTrackColor = TColor.coral),
             )
         }
