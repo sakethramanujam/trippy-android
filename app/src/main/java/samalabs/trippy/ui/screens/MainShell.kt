@@ -25,6 +25,11 @@ import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Route as RouteIcon
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import samalabs.trippy.domain.TripEvent
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -41,6 +46,7 @@ sealed interface Route {
     data class Flight(val tripId: Int, val id: Int) : Route
     data class Stay(val tripId: Int, val id: Int) : Route
     data class Rental(val id: Int) : Route
+    data class Journey(val id: Int) : Route
 }
 
 class Navigator {
@@ -63,11 +69,25 @@ fun MainShell() {
     val container = LocalContainer.current
     val session by container.sessions.session.collectAsState()
     val state by container.trips.state.collectAsState()
+    val suggestions by container.journeys.suggestions.collectAsState()
+    val journeyDetails by container.journeys.details.collectAsState()
     val nav = remember { Navigator() }
+    val context = LocalContext.current
+    val shellScope = rememberCoroutineScope()
+    fun toastIfError(err: String?) { err?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() } }
+    fun openEvent(tripId: Int, e: TripEvent) {
+        when {
+            e.flight != null -> nav.push(Route.Flight(tripId, e.flight.id))
+            e.lodging != null -> nav.push(Route.Stay(tripId, e.lodging.id))
+            e.rental != null -> nav.push(Route.Rental(e.rental.id))
+        }
+    }
     val now = rememberNow()
     LaunchedEffect(Unit) {
         container.trips.clear()
+        container.journeys.clear()
         container.trips.refresh()
+        container.journeys.loadSuggestions()
     }
     BackHandler(enabled = nav.stack.size > 1) { nav.pop() }
     val depth = nav.stack.size
@@ -81,16 +101,43 @@ fun MainShell() {
             },
         ) { (route, _) ->
             when (route) {
-                Route.Trips -> TripsScreen(
-                    state = state,
-                    initials = session?.profile?.initialsOrGuess ?: "?",
-                    now = now,
-                    actions = TripsListActions(
+                Route.Trips -> {
+                    val listActions = TripsListActions(
                         open = { nav.push(Route.Trip(it)) },
-                        refresh = { container.trips.refresh() },
+                        refresh = { container.trips.refresh(); container.journeys.loadSuggestions() },
                         account = { nav.push(Route.Account) },
-                    ),
-                )
+                    )
+                    val snapsById = remember(state.trips, state.rentals, now.toLocalDate()) {
+                        state.trips.associate { it.id to TripSnapshot(it, state.rentals, now) }
+                    }
+                    val journeyActions = JourneyListActions(
+                        open = { nav.push(Route.Journey(it)) },
+                        accept = { s -> shellScope.launch { val (id, err) = container.journeys.accept(s); toastIfError(err); if (err == null && id != null) nav.push(Route.Journey(id)) } },
+                        dismiss = { s -> shellScope.launch { container.journeys.dismiss(s) } },
+                    )
+                    TripsScreen(
+                        state = state,
+                        initials = session?.profile?.initialsOrGuess ?: "?",
+                        now = now,
+                        actions = listActions,
+                        journeyTripIds = remember(state.journeys) { state.journeys.flatMap { it.tripIds }.toSet() },
+                        journeysSection = { row -> journeysSection(state.journeys, suggestions, snapsById, now, journeyActions, listActions, row) },
+                    )
+                }
+                is Route.Journey -> {
+                    LaunchedEffect(route.id) { container.journeys.load(route.id)?.let { if (journeyDetails[route.id] == null) toastIfError(it) } }
+                    val j = journeyDetails[route.id] ?: state.journeys.firstOrNull { it.id == route.id }
+                    fun edit(block: suspend () -> String?) { shellScope.launch { toastIfError(block()) } }
+                    JourneyDetailScreen(j, null, state.trips, state.rentals, now, JourneyDetailActions(
+                        close = { nav.pop() },
+                        openTrip = { nav.push(Route.Trip(it)) },
+                        openEvent = { tid, e -> openEvent(tid, e) },
+                        rename = { t -> edit { container.journeys.rename(route.id, t) } },
+                        addTrips = { ids -> edit { container.journeys.addTrips(route.id, ids) } },
+                        removeTrip = { tid -> edit { container.journeys.removeTrip(route.id, tid) } },
+                        reorder = { ids -> edit { container.journeys.reorder(route.id, ids) } },
+                    ))
+                }
                 is Route.Trip -> {
                     val trip = state.trips.firstOrNull { it.id == route.id }
                     if (trip == null) TripPlaceholder(route.id, onBack = { nav.pop() })
@@ -98,25 +145,41 @@ fun MainShell() {
                         val snap = remember(trip, state.rentals, now.toLocalDate()) { TripSnapshot(trip, state.rentals, now) }
                         val journey = state.journeys.firstOrNull { route.id in it.tripIds }
                         val scope = rememberCoroutineScope()
+                        var choosing by remember { mutableStateOf(false) }
+                        var startingNew by remember { mutableStateOf(false) }
                         TripDetailScreen(snap, journey, now, TripDetailActions(
                             close = { nav.pop() },
-                            openEvent = { e ->
-                                when {
-                                    e.flight != null -> nav.push(Route.Flight(trip.id, e.flight.id))
-                                    e.lodging != null -> nav.push(Route.Stay(trip.id, e.lodging.id))
-                                    e.rental != null -> nav.push(Route.Rental(e.rental.id))
-                                }
-                            },
-                            menu = listOf(
-                                MenuAction(if (trip.pinned) "Unpin" else "Pin to top", Icons.Filled.PushPin) {
+                            openEvent = { e -> openEvent(trip.id, e) },
+                            openJourney = { nav.push(Route.Journey(it)) },
+                            menu = buildList {
+                                add(MenuAction(if (trip.pinned) "Unpin" else "Pin to top", Icons.Filled.PushPin) {
                                     scope.launch { container.trips.setPinned(trip.id, !trip.pinned) }
-                                },
-                                MenuAction("Story", Icons.Filled.AutoStories) { nav.push(StoryRoute(trip.id)) },
-                                MenuAction("Share card", Icons.Filled.IosShare) { nav.push(ShareCardRoute(trip.id)) },
-                                MenuAction("Expenses", Icons.Filled.AccountBalanceWallet) { nav.push(ExpensesRoute(trip.id)) },
-                                MenuAction("Import into trip", Icons.Filled.FileOpen) { nav.push(ImportRoute(trip.id)) },
-                            ),
+                                })
+                                add(MenuAction("Story", Icons.Filled.AutoStories) { nav.push(StoryRoute(trip.id)) })
+                                add(MenuAction("Share card", Icons.Filled.IosShare) { nav.push(ShareCardRoute(trip.id)) })
+                                add(MenuAction("Expenses", Icons.Filled.AccountBalanceWallet) { nav.push(ExpensesRoute(trip.id)) })
+                                add(MenuAction("Import into trip", Icons.Filled.FileOpen) { nav.push(ImportRoute(trip.id)) })
+                                if (journey == null) add(MenuAction("Add to a journey…", Icons.Filled.RouteIcon) { choosing = true })
+                                else if (journey.isOwner) add(MenuAction("Remove from journey", Icons.Filled.RemoveCircleOutline, destructive = true) {
+                                    shellScope.launch { toastIfError(container.journeys.removeTrip(journey.id, trip.id)) }
+                                })
+                            },
                         ))
+                        if (choosing) JourneyChooserDialog(
+                            state.journeys, onDismiss = { choosing = false },
+                            onPick = { jid -> choosing = false; shellScope.launch { toastIfError(container.journeys.addTrips(jid, listOf(trip.id))) } },
+                            onNew = { choosing = false; startingNew = true },
+                        )
+                        if (startingNew) TripPickerSheet(
+                            "New journey with ${trip.title}", state.trips.filter { it.id != trip.id && it.journeyId == null && state.journeys.none { j -> it.id in j.tripIds } },
+                            "Link", onDismiss = { startingNew = false },
+                        ) { ids ->
+                            startingNew = false
+                            shellScope.launch {
+                                val (id, err) = container.journeys.create(null, listOf(trip.id) + ids)
+                                toastIfError(err); if (err == null && id != null) nav.push(Route.Journey(id))
+                            }
+                        }
                     }
                 }
                 is Route.Flight -> state.trips.firstOrNull { it.id == route.tripId }?.flights?.firstOrNull { it.id == route.id }

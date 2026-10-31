@@ -78,7 +78,7 @@ fun TripsScreen(
     now: LocalDateTime,
     actions: TripsListActions,
     journeyTripIds: Set<Int> = emptySet(),
-    journeysSection: LazyListScope.() -> Unit = {},
+    journeysSection: LazyListScope.(row: @Composable (TripSnapshot, @Composable () -> Unit) -> Unit) -> Unit = {},
     row: @Composable (TripSnapshot, @Composable () -> Unit) -> Unit = { _, content -> content() },
 ) {
     val snaps = remember(state.trips, state.rentals, now.toLocalDate()) { state.trips.map { TripSnapshot(it, state.rentals, now) } }
@@ -101,7 +101,7 @@ fun TripsScreen(
                 } else {
                     hero?.let { h -> item(key = "hero") { Box(Modifier.sheet()) { row(h) { UpNext(h, now, actions) } } } }
                     section("Pinned", sections.pinned, now, actions, row, pinned = true)
-                    journeysSection()
+                    journeysSection(row)
                     section("Now", sections.now, now, actions, row)
                     section("Upcoming", sections.upcoming, now, actions, row)
                     sections.pastByYear.forEach { (year, trips) -> section(if (year == 0) "Undated" else "$year", trips, now, actions, row) }

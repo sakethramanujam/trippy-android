@@ -29,7 +29,8 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-data class ArtStop(val code: String, val at: LatLng)
+/** [color] tints the segment that arrives at this stop (journeys color each leg). */
+data class ArtStop(val code: String, val at: LatLng, val color: Color? = null)
 
 /**
  * Stand-in for the iOS satellite map: a dark ocean with a faint graticule and glowing great-arc
@@ -68,9 +69,11 @@ fun RouteArt(stops: List<ArtStop>, modifier: Modifier = Modifier, topInset: andr
                 if (ny > 0 || (ny == 0f && nx > 0)) { nx = -nx; ny = -ny }
                 val ctrl = Offset(mid.x + nx * len * 0.22f, mid.y + ny * len * 0.22f)
                 val path = Path().apply { moveTo(a.x, a.y); quadraticTo(ctrl.x, ctrl.y, b.x, b.y) }
-                drawPath(path, TColor.route.copy(alpha = 0.18f), style = Stroke(width = 18f, cap = StrokeCap.Round))
-                drawPath(path, TColor.route.copy(alpha = 0.35f), style = Stroke(width = 9f, cap = StrokeCap.Round))
-                drawPath(path, Color(0xFF8FC2FF), style = Stroke(width = 4f, cap = StrokeCap.Round))
+                val tint = stops.getOrNull(i + 1)?.color
+                val glow = tint ?: TColor.route
+                drawPath(path, glow.copy(alpha = 0.18f), style = Stroke(width = 18f, cap = StrokeCap.Round))
+                drawPath(path, glow.copy(alpha = 0.35f), style = Stroke(width = 9f, cap = StrokeCap.Round))
+                drawPath(path, tint ?: Color(0xFF8FC2FF), style = Stroke(width = 4f, cap = StrokeCap.Round))
             }
             xy.forEach { drawCircle(Color.White, 6f, it); drawCircle(TColor.route, 4f, it) }
         }
