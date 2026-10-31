@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -80,6 +81,7 @@ fun ProfileScreen(nav: Navigator, settingsRows: @Composable ColumnScope.() -> Un
     var showPassword by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
+    var showJoin by remember { mutableStateOf(false) }
     val dirty = p != null && (name.trim() != p.name.orEmpty() || airport.uppercase() != p.homeAirport.orEmpty())
     val server = session?.server ?: c.sessions.current.server
 
@@ -116,6 +118,8 @@ fun ProfileScreen(nav: Navigator, settingsRows: @Composable ColumnScope.() -> Un
             Column {
                 HorizontalDivider(color = TColor.divider)
                 ProfileTile(Icons.Filled.Download, "Import trips", TColor.green) { nav.push(ImportRoute(null)) }
+                TileDivider()
+                ProfileTile(Icons.Filled.PersonAdd, "Join with invite code", TColor.blue) { showJoin = true }
                 settingsRows()
                 TileDivider()
                 ProfileTile(Icons.Filled.Delete, "Recently Deleted", TColor.red) { nav.push(Route.Trash) }
@@ -140,6 +144,7 @@ fun ProfileScreen(nav: Navigator, settingsRows: @Composable ColumnScope.() -> Un
     }
 
     if (showServer) ServerSettingsSheet(onDismiss = { showServer = false }, onSaved = { showServer = false; scope.launch { c.trips.refresh() } })
+    if (showJoin) JoinInviteSheet { showJoin = false }
     if (showPassword) ChangePasswordSheet { showPassword = false }
     if (showDelete) DeleteAccountSheet { showDelete = false }
     if (confirmLogout) AlertDialog(

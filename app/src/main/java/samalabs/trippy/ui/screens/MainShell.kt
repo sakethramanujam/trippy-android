@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Route as RouteIcon
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import android.widget.Toast
@@ -166,6 +167,7 @@ fun MainShell() {
                         val scope = rememberCoroutineScope()
                         var choosing by remember { mutableStateOf(false) }
                         var startingNew by remember { mutableStateOf(false) }
+                        var inviting by remember { mutableStateOf(false) }
                         TripDetailScreen(snap, journey, now, TripDetailActions(
                             close = { nav.pop() },
                             openEvent = { e -> openEvent(trip.id, e) },
@@ -177,6 +179,7 @@ fun MainShell() {
                                 add(MenuAction("Story", Icons.Filled.AutoStories) { nav.push(StoryRoute(trip.id)) })
                                 add(MenuAction("Share card", Icons.Filled.IosShare) { nav.push(ShareCardRoute(trip.id)) })
                                 add(MenuAction("Expenses", Icons.Filled.AccountBalanceWallet) { nav.push(ExpensesRoute(trip.id)) })
+                                add(MenuAction("Invite travelers", Icons.Filled.PersonAdd) { inviting = true })
                                 add(MenuAction("Import into trip", Icons.Filled.FileOpen) { nav.push(ImportRoute(trip.id)) })
                                 if (journey == null) add(MenuAction("Add to a journey…", Icons.Filled.RouteIcon) { choosing = true })
                                 else if (journey.isOwner) add(MenuAction("Remove from journey", Icons.Filled.RemoveCircleOutline, destructive = true) {
@@ -186,6 +189,7 @@ fun MainShell() {
                                 else add(MenuAction("Leave trip…", Icons.AutoMirrored.Filled.ExitToApp, destructive = true) { deleting = listOf(trip.id) })
                             },
                         ))
+                        if (inviting) InviteTravelersFlow(trip) { inviting = false }
                         if (choosing) JourneyChooserDialog(
                             state.journeys, onDismiss = { choosing = false },
                             onPick = { jid -> choosing = false; shellScope.launch { toastIfError(container.journeys.addTrips(jid, listOf(trip.id))) } },
