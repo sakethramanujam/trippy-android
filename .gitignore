@@ -15,3 +15,9 @@ keystore.properties
 # never commit real exports or personal data
 *.private.json
 /screenshots/raw/
+# release signing secrets (kept in ~/.android, never in the repo)
+*.p12
+*.pem
+signing.properties
+*-release.properties
+trippy-release*

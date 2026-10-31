@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -19,8 +21,30 @@ android {
         buildConfigField("String", "DEFAULT_SERVER", "\"http://10.0.2.2:8000\"")
     }
 
+    // Release signing lives outside the repo. Point at it with -PtrippySigning=<file>
+    // or TRIPPY_SIGNING_PROPERTIES; default ~/.android/trippy-release.properties.
+    // Without it, assembleRelease still builds (unsigned).
+    val signingFile = ((findProperty("trippySigning") as String?)
+        ?: System.getenv("TRIPPY_SIGNING_PROPERTIES")
+        ?: "${System.getProperty("user.home")}/.android/trippy-release.properties")
+        .let(::file)
+    val signingProps = Properties().apply {
+        if (signingFile.isFile) signingFile.inputStream().use(::load)
+    }
+    if (signingProps.getProperty("storeFile") != null) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(signingProps.getProperty("storeFile"))
+                storePassword = signingProps.getProperty("storePassword")
+                keyAlias = signingProps.getProperty("keyAlias")
+                keyPassword = signingProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
