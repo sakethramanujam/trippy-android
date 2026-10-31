@@ -65,11 +65,13 @@ class BookingExtras(
 
 @Composable
 private fun DetailPage(onClose: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    androidx.compose.runtime.CompositionLocalProvider(samalabs.trippy.ui.components.LocalFactHandler provides samalabs.trippy.ui.rememberFactHandler()) {
     Box(Modifier.fillMaxSize().background(TColor.canvas).safeDrawingPadding()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 20.dp, bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp), content = content,
         )
+    }
     }
 }
 
@@ -104,7 +106,7 @@ fun flightFacts(f: ApiFlight): List<Fact> = buildList {
 }
 
 @Composable
-fun FlightDetailScreen(f: ApiFlight, now: LocalDateTime, onClose: () -> Unit, extras: BookingExtras = BookingExtras()) {
+fun FlightDetailScreen(f: ApiFlight, now: LocalDateTime, onClose: () -> Unit, extras: BookingExtras = flightExtras(f, now)) {
     DetailPage(onClose) {
         DetailHeader({ BrandTile(Brands.carrierCode(f), Brands.flight(f)) }, f.number.ifBlank { "Flight" }, f.airlineName, onClose)
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -173,7 +175,7 @@ fun stayFacts(h: ApiLodging): List<Fact> = buildList {
 }
 
 @Composable
-fun StayDetailScreen(h: ApiLodging, now: LocalDateTime, onClose: () -> Unit, extras: BookingExtras = BookingExtras()) {
+fun StayDetailScreen(h: ApiLodging, now: LocalDateTime, onClose: () -> Unit, extras: BookingExtras = stayExtras(h)) {
     val phase = h.phase(now)
     val color = when (phase) { StayPhase.CANCELLED -> TColor.red; StayPhase.IN_PROGRESS -> TColor.green; StayPhase.COMPLETED -> Color(0xFFD1D1D6); StayPhase.UPCOMING -> TColor.coral }
     DetailPage(onClose) {
@@ -224,7 +226,7 @@ fun rentalFacts(r: ApiRentalCar): List<Fact> = buildList {
 }
 
 @Composable
-fun RentalDetailScreen(r: ApiRentalCar, now: LocalDateTime, onClose: () -> Unit, extras: BookingExtras = BookingExtras()) {
+fun RentalDetailScreen(r: ApiRentalCar, now: LocalDateTime, onClose: () -> Unit, extras: BookingExtras = rentalExtras(r)) {
     val p = r.pickupDate; val d = r.dropoffDate
     val (title, color) = when {
         p != null && now.isBefore(p) -> "Pick up in ${Fmt.duration(now, p)}" to TColor.blue
