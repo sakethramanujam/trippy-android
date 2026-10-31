@@ -199,6 +199,8 @@ data class ApiRentalCar(
 data class ApiSplit(
     @SerialName("user_id") val userId: Int? = null,
     @SerialName("amount_cents") val amountCents: Long? = null,
+    @SerialName("amount_owed") val amountOwed: Double? = null,
+    val share: Double? = null,
 )
 
 @Serializable

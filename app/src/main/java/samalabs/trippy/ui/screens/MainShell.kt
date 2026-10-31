@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.delay
@@ -107,6 +108,7 @@ fun MainShell() {
                                 MenuAction(if (trip.pinned) "Unpin" else "Pin to top", Icons.Filled.PushPin) {
                                     scope.launch { container.trips.setPinned(trip.id, !trip.pinned) }
                                 },
+                                MenuAction("Expenses", Icons.Filled.AccountBalanceWallet) { nav.push(ExpensesRoute(trip.id)) },
                             ),
                         ))
                     }
@@ -118,6 +120,7 @@ fun MainShell() {
                 is Route.Rental -> (state.rentals + state.trips.flatMap { it.rentalCars }).firstOrNull { it.id == route.id }
                     ?.let { RentalDetailScreen(it, now, onClose = { nav.pop() }) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
                 Route.Account -> AccountScreen(onBack = { nav.pop() })
+                else -> MoreRouteScreen(route, nav)
             }
         }
     }
