@@ -33,6 +33,7 @@ object TColor {
     val purple = Color(0xFF5E5CE6)
     val teal = Color(0xFF40C8E0)
     val route = Color(0xFF5EA8FF)
+    val highlight = Color(0xFFFFD60A)
 
     val stay get() = coral
     val accent get() = coral

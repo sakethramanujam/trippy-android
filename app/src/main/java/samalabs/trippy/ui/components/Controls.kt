@@ -3,6 +3,7 @@ package samalabs.trippy.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,6 +59,11 @@ fun Modifier.trippyCard(radius: Dp = TSize.radius, color: Color = TColor.surface
 /** Click without the Material ripple, for rows that animate their own press state. */
 fun Modifier.plainClick(onClick: () -> Unit): Modifier =
     this.clickable(interactionSource = MutableInteractionSource(), indication = null, onClick = onClick)
+
+/** Tap and long-press without a ripple (copy on long-press, open on tap). */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+fun Modifier.longPlainClick(onClick: () -> Unit, onLong: () -> Unit): Modifier =
+    this.combinedClickable(interactionSource = MutableInteractionSource(), indication = null, onClick = onClick, onLongClick = onLong)
 
 @Composable
 fun PrimaryButton(
