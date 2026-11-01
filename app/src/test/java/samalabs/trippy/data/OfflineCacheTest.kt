@@ -82,6 +82,16 @@ class OfflineCacheTest {
         assertTrue(cache.entries.isEmpty())
     }
 
+    @Test fun markOfflineImmediatelyUpdatesState() {
+        val cache = MemoryResponseCache()
+        val server = MockWebServer().apply { start() }
+        val r = repo(server, cache)
+        assertFalse(r.state.value.offline)
+        r.markOffline()
+        assertTrue(r.state.value.offline)
+        server.close()
+    }
+
     @Test fun offlineLine() {
         assertEquals("Offline · no saved copy yet", Fmt.offlineLine(null, 0))
         assertEquals("Offline · synced just now", Fmt.offlineLine(0, 30_000))

@@ -58,7 +58,7 @@ class ApiClient(
 
     suspend fun health(baseUrl: String): ServerHealth = withContext(Dispatchers.IO) {
         val req = Request.Builder().url("$baseUrl/health").header("Cache-Control", "no-cache").build()
-        val quick = http.newBuilder().callTimeout(6, TimeUnit.SECONDS).build()
+        val quick = http.newBuilder().connectTimeout(3, TimeUnit.SECONDS).callTimeout(4, TimeUnit.SECONDS).build()
         val res = try { quick.newCall(req).execute() } catch (e: UnknownServiceException) { throw cleartextBlocked() } catch (e: IOException) { throw OfflineException(e) }
         res.use {
             if (it.code != 200) throw ApiException(it.code, "The server answered HTTP ${it.code}.")
@@ -123,7 +123,7 @@ class ApiClient(
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         fun defaultHttp(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(3, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
 

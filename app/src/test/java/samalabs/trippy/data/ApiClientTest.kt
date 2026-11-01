@@ -68,4 +68,9 @@ class ApiClientTest {
         tokens.session = tokens.session.copy(server = url)
         try { api.get("/trips/"); fail() } catch (_: OfflineException) {}
     }
+
+    @Test fun defaultHttpHasShortConnectTimeout() {
+        val client = ApiClient.defaultHttp()
+        assertEquals(3000, client.connectTimeoutMillis)
+    }
 }

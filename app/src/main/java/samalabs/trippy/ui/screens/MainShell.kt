@@ -116,6 +116,15 @@ fun MainShell() {
         val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
         val cb = object : android.net.ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: android.net.Network) { networkUp.intValue++ }
+            override fun onLost(network: android.net.Network) {
+                container.trips.markOffline()
+            }
+        }
+        val isConnected = cm?.activeNetwork?.let { n ->
+            cm.getNetworkCapabilities(n)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        } ?: false
+        if (!isConnected && container.trips.state.value.trips.isNotEmpty()) {
+            container.trips.markOffline()
         }
         runCatching { cm?.registerDefaultNetworkCallback(cb) }
         onDispose { runCatching { cm?.unregisterNetworkCallback(cb) } }

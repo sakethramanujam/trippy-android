@@ -51,6 +51,10 @@ class TripsRepository(
 
     suspend fun wipeCache() = cache.clear()
 
+    fun markOffline() {
+        _state.update { if (!it.offline) it.copy(offline = true) else it }
+    }
+
     suspend fun refresh() {
         if (!_state.value.loaded) prime()
         _state.update { it.copy(refreshing = true) }
