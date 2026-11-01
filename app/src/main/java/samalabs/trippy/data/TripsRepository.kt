@@ -110,6 +110,56 @@ class TripsRepository(
         return created
     }
 
+    /** Adds a traveler by name (+ optional email) to [tripId], updating state and Room cache immediately. */
+    suspend fun addTraveler(tripId: Int, name: String, email: String? = null): ApiTrip {
+        val body = TrippyJson.encodeToString(
+            CreateTravelerRequest.serializer(),
+            CreateTravelerRequest(name = name.trim(), email = email?.trim()?.takeIf { it.isNotEmpty() }),
+        )
+        val raw = api.post("/trips/$tripId/travelers", body)
+        return replaceTripInCache(TrippyJson.decodeFromString(ApiTrip.serializer(), raw))
+    }
+
+    /** Links an already-known participant [userId] to [tripId]. */
+    suspend fun addKnownParticipant(tripId: Int, userId: Int): ApiTrip {
+        val raw = api.post("/trips/$tripId/participants/$userId")
+        return replaceTripInCache(TrippyJson.decodeFromString(ApiTrip.serializer(), raw))
+    }
+
+    /** Removes [userId] from [tripId]. Throws [ApiException] with code 409 when unsettled expenses require [force] = true. */
+    suspend fun removeTraveler(tripId: Int, userId: Int, force: Boolean = false): ApiTrip {
+        val suffix = if (force) "?force=true" else ""
+        val raw = api.delete("/trips/$tripId/participants/$userId$suffix")
+        return replaceTripInCache(TrippyJson.decodeFromString(ApiTrip.serializer(), raw))
+    }
+
+    /** Merges [sourceTripId] into [targetTripId] and deletes [sourceTripId]. */
+    suspend fun mergeTrip(sourceTripId: Int, targetTripId: Int): ApiTrip {
+        val body = TrippyJson.encodeToString(MergeTripRequest.serializer(), MergeTripRequest(sourceTripId = sourceTripId, confirm = true))
+        val raw = api.post("/trips/$targetTripId/merge", body)
+        val merged = TrippyJson.decodeFromString(ApiTrip.serializer(), raw)
+        val nowMs = clock()
+        val updatedTrips = _state.value.trips
+            .filter { it.id != sourceTripId }
+            .map { if (it.id == targetTripId) merged.copy(pinned = it.pinned) else it }
+        _state.update { it.copy(trips = updatedTrips, offline = false, error = null, lastSynced = nowMs) }
+        val encoded = TrippyJson.encodeToString(ListSerializer(ApiTrip.serializer()), updatedTrips)
+        cache.write(CachedResponse(scope(), TRIPS, encoded, nowMs))
+        runCatching { refresh() }
+        return merged
+    }
+
+    private suspend fun replaceTripInCache(updated: ApiTrip): ApiTrip {
+        val nowMs = clock()
+        val updatedTrips = _state.value.trips.map { t ->
+            if (t.id == updated.id) updated.copy(pinned = t.pinned) else t
+        }
+        _state.update { it.copy(trips = updatedTrips, offline = false, error = null, lastSynced = nowMs) }
+        val encoded = TrippyJson.encodeToString(ListSerializer(ApiTrip.serializer()), updatedTrips)
+        cache.write(CachedResponse(scope(), TRIPS, encoded, nowMs))
+        return updated
+    }
+
     fun clear() { _state.value = TripsState() }
 
     /** Decode first, then save: a body the app can't read never replaces a good copy. */

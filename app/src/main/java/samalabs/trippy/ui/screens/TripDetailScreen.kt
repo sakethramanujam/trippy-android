@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import samalabs.trippy.data.ApiJourney
+import samalabs.trippy.data.ApiParticipant
 import samalabs.trippy.data.ApiRentalCar
 import samalabs.trippy.domain.EventKind
 import samalabs.trippy.domain.Fmt
@@ -98,6 +99,8 @@ class TripDetailActions(
     val openEvent: (TripEvent) -> Unit = {},
     val openJourney: (Int) -> Unit = {},
     val addFlight: (() -> Unit)? = null,
+    val addTraveler: (() -> Unit)? = null,
+    val openTraveler: ((ApiParticipant) -> Unit)? = null,
     val menu: List<MenuAction> = emptyList(),
     val headerButtons: @Composable () -> Unit = {},
     /** Extra sections other features add (expenses, stories rail...). */
@@ -124,7 +127,7 @@ fun TripDetailScreen(snap: TripSnapshot, journey: ApiJourney?, now: LocalDateTim
                     TripStatus(snap, now)
                     journey?.let { JourneyLink(it, snap.id, actions); }
                 }
-                Travelers(snap)
+                Travelers(snap, actions)
                 Column {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.weight(1f)) {
@@ -257,31 +260,63 @@ private fun JourneyLink(j: ApiJourney, tripId: Int, actions: TripDetailActions) 
 }
 
 @Composable
-private fun Travelers(s: TripSnapshot) {
+private fun Travelers(s: TripSnapshot, actions: TripDetailActions) {
     val people = s.trip.participants
     Column {
-        Row(verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             Text("Travelers", style = TType.title3, color = TColor.textPrimary)
             Text("  ${people.size}", style = TType.number, color = TColor.textTertiary)
+            Spacer(Modifier.weight(1f))
+            if (people.isNotEmpty()) {
+                Text("TAP A PERSON FOR OPTIONS", style = TType.label, color = TColor.textTertiary)
+            }
         }
         Spacer(Modifier.height(12.dp))
         if (people.isEmpty()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(48.dp).clip(CircleShape).background(TColor.surfaceRaised), Alignment.Center) { Icon(Icons.Filled.Add, null, tint = TColor.textPrimary) }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .plainClick { actions.addTraveler?.invoke() }
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(48.dp).clip(CircleShape).background(TColor.surfaceRaised), Alignment.Center) { Icon(Icons.Filled.Add, "Add traveler", tint = TColor.textPrimary) }
                 Column(Modifier.padding(start = 12.dp)) {
                     Text("Who's coming?", style = TType.headline, color = TColor.textPrimary)
-                    Text("Add people by name to split costs", style = TType.footnote, color = TColor.textSecondary)
+                    Text("Add people by name to split costs or send an invite code", style = TType.footnote, color = TColor.textSecondary)
                 }
             }
         } else Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             people.forEach { p ->
-                Column(Modifier.width(60.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    Modifier
+                        .width(64.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .plainClick { actions.openTraveler?.invoke(p) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     Box(Modifier.size(48.dp).clip(CircleShape).background(avatarColor(p.id)), Alignment.Center) {
                         Text(p.initials, style = TType.headline, color = Color.White)
                     }
                     Text(p.name.substringBefore(" "), style = TType.caption, color = TColor.textPrimary, maxLines = 1, modifier = Modifier.padding(top = 5.dp))
-                    if (p.id == s.trip.ownerId) Text("Organizer", style = TType.micro, color = TColor.textSecondary)
+                    when {
+                        p.id == s.trip.ownerId -> Text("Organizer", style = TType.micro, color = TColor.textSecondary)
+                        p.isPlaceholder -> Text("Invite", style = TType.micro, color = TColor.coral)
+                    }
                 }
+            }
+            Column(
+                Modifier
+                    .width(60.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .plainClick { actions.addTraveler?.invoke() },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(Modifier.size(48.dp).clip(CircleShape).background(TColor.surfaceRaised), Alignment.Center) {
+                    Icon(Icons.Filled.Add, "Add traveler", tint = TColor.textPrimary)
+                }
+                Text("Add", style = TType.caption, color = TColor.textSecondary, modifier = Modifier.padding(top = 5.dp))
             }
         }
     }

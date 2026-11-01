@@ -27,14 +27,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Route as RouteIcon
 import androidx.compose.material.icons.filled.RemoveCircleOutline
+import samalabs.trippy.data.ApiParticipant
+import samalabs.trippy.domain.displayTitle
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import samalabs.trippy.domain.TripEvent
@@ -181,21 +185,31 @@ fun MainShell() {
                         var choosing by remember { mutableStateOf(false) }
                         var startingNew by remember { mutableStateOf(false) }
                         var inviting by remember { mutableStateOf(false) }
+                        var addingTraveler by remember { mutableStateOf(false) }
+                        var selectedTraveler by remember { mutableStateOf<ApiParticipant?>(null) }
+                        var inviteTarget by remember { mutableStateOf<ApiParticipant?>(null) }
+                        var merging by remember { mutableStateOf(false) }
                         TripDetailScreen(snap, journey, now, TripDetailActions(
                             close = { nav.pop() },
                             openEvent = { e -> openEvent(trip.id, e) },
                             openJourney = { nav.push(Route.Journey(it)) },
                             addFlight = { nav.push(AddFlightRoute(trip.id)) },
+                            addTraveler = { addingTraveler = true },
+                            openTraveler = { selectedTraveler = it },
                             menu = buildList {
                                 add(MenuAction("Add flight", Icons.Filled.FlightTakeoff) { nav.push(AddFlightRoute(trip.id)) })
+                                add(MenuAction("Add traveler", Icons.Filled.PersonAdd) { addingTraveler = true })
+                                add(MenuAction("Invite travelers", Icons.Filled.Key) { inviting = true })
                                 add(MenuAction(if (trip.pinned) "Unpin" else "Pin to top", Icons.Filled.PushPin) {
                                     scope.launch { container.trips.setPinned(trip.id, !trip.pinned) }
                                 })
                                 add(MenuAction("Story", Icons.Filled.AutoStories) { nav.push(StoryRoute(trip.id)) })
                                 add(MenuAction("Share card", Icons.Filled.IosShare) { nav.push(ShareCardRoute(trip.id)) })
                                 add(MenuAction("Expenses", Icons.Filled.AccountBalanceWallet) { nav.push(ExpensesRoute(trip.id)) })
-                                add(MenuAction("Invite travelers", Icons.Filled.PersonAdd) { inviting = true })
                                 add(MenuAction("Import into trip", Icons.Filled.FileOpen) { nav.push(ImportRoute(trip.id)) })
+                                if (state.trips.any { it.id != trip.id }) {
+                                    add(MenuAction("Merge into…", Icons.Filled.CallMerge) { merging = true })
+                                }
                                 if (journey == null) add(MenuAction("Add to a journey…", Icons.Filled.RouteIcon) { choosing = true })
                                 else if (journey.isOwner) add(MenuAction("Remove from journey", Icons.Filled.RemoveCircleOutline, destructive = true) {
                                     shellScope.launch { toastIfError(container.journeys.removeTrip(journey.id, trip.id)) }
@@ -206,6 +220,42 @@ fun MainShell() {
                             extraSections = { samalabs.trippy.ui.photos.TripPhotosSection(trip, trip); TripDrivesSection(trip.id, trip) },
                         ))
                         if (inviting) InviteTravelersFlow(trip) { inviting = false }
+                        if (addingTraveler) {
+                            AddTravelerSheet(
+                                trip = trip,
+                                onDismiss = { addingTraveler = false },
+                                onInvitePerson = { created ->
+                                    addingTraveler = false
+                                    inviteTarget = created
+                                },
+                            )
+                        }
+                        selectedTraveler?.let { person ->
+                            TravelerOptionsDialog(
+                                trip = trip,
+                                person = person,
+                                onDismiss = { selectedTraveler = null },
+                                onShareInvite = {
+                                    selectedTraveler = null
+                                    inviteTarget = person
+                                },
+                            )
+                        }
+                        inviteTarget?.let { person ->
+                            InviteCodeSheet(trip.id, trip.displayTitle, person) { inviteTarget = null }
+                        }
+                        if (merging) {
+                            MergeTripDialog(
+                                source = trip,
+                                candidates = state.trips.filter { it.id != trip.id },
+                                onDismiss = { merging = false },
+                                onMergedInto = { targetId ->
+                                    merging = false
+                                    nav.pop()
+                                    nav.push(Route.Trip(targetId))
+                                },
+                            )
+                        }
                         if (choosing) JourneyChooserDialog(
                             state.journeys, onDismiss = { choosing = false },
                             onPick = { jid -> choosing = false; shellScope.launch { toastIfError(container.journeys.addTrips(jid, listOf(trip.id))) } },

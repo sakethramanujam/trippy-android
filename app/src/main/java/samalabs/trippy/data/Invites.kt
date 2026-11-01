@@ -22,6 +22,12 @@ data class ApiInviteRedeemed(@SerialName("trip_id") val tripId: Int? = null, val
 @Serializable
 private data class RedeemRequest(val code: String)
 
+@Serializable
+data class CreateTravelerRequest(val name: String, val email: String? = null)
+
+@Serializable
+data class MergeTripRequest(@SerialName("source_trip_id") val sourceTripId: Int, val confirm: Boolean = true)
+
 class InviteRepository(private val api: ApiClient) {
     /** Creates or replaces [userId]'s code on [tripId]; the previous code stops working. */
     suspend fun issue(tripId: Int, userId: Int): ApiInviteCode =
@@ -30,6 +36,10 @@ class InviteRepository(private val api: ApiClient) {
     suspend fun redeem(code: String): ApiInviteRedeemed =
         TrippyJson.decodeFromString(ApiInviteRedeemed.serializer(),
             api.post("/invites/redeem", TrippyJson.encodeToString(RedeemRequest.serializer(), RedeemRequest(code.trim()))))
+
+    /** People the signed-in user already shares a trip or group with, for quick re-adding. */
+    suspend fun knownUsers(): List<ApiParticipant> =
+        TrippyJson.decodeFromString(kotlinx.serialization.builtins.ListSerializer(ApiParticipant.serializer()), api.get("/users/?limit=500"))
 }
 
 object InviteText {

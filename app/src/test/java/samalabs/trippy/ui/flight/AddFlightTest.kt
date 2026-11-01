@@ -174,4 +174,50 @@ class AddFlightTest {
         assertTrue(cached!!.body.contains("UA 837"))
         server.close()
     }
+
+    @Test
+    fun `addTraveler and mergeTrip update trip state and offline cache`() = runBlocking {
+        val cache = MemoryResponseCache()
+        val server = MockWebServer().apply { start() }
+        val baseUrl = server.url("/").toString().trimEnd('/')
+        val session = Session(baseUrl, "tok", "ref", Profile(1, "demo@example.com"))
+        cache.write(
+            CachedResponse(
+                session.scope,
+                TripsRepository.TRIPS,
+                """[{"id":42,"title":"Japan","start_date":"2026-11-10T00:00:00","participants":[]},{"id":43,"title":"Japan Copy","start_date":"2026-11-10T00:00:00","participants":[]}]""",
+                100L,
+            ),
+        )
+        val updatedWithTraveler = """{"id":42,"title":"Japan","start_date":"2026-11-10T00:00:00","participants":[{"id":77,"display_name":"Maya Chen","is_placeholder":true}]}"""
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.method == "POST" && request.url.encodedPath == "/trips/42/travelers") {
+                    return MockResponse(code = 200, body = updatedWithTraveler)
+                }
+                if (request.method == "POST" && request.url.encodedPath == "/trips/42/merge") {
+                    return MockResponse(code = 200, body = updatedWithTraveler)
+                }
+                if (request.method == "GET" && request.url.encodedPath.startsWith("/trips")) {
+                    return MockResponse(code = 200, body = "[$updatedWithTraveler]")
+                }
+                return MockResponse(code = 200, body = "[]")
+            }
+        }
+        val tokens = object : TokenSource {
+            override val current: Session = session
+            override suspend fun updateTokens(access: String, refresh: String?) = Unit
+        }
+        val repo = TripsRepository(ApiClient(tokens), cache, scope = { session.scope }, clock = { 200L })
+        repo.prime()
+
+        val updated = repo.addTraveler(42, "Maya Chen", null)
+        assertEquals("Maya Chen", updated.participants.single().name)
+        assertTrue(updated.participants.single().isPlaceholder)
+
+        val merged = repo.mergeTrip(sourceTripId = 43, targetTripId = 42)
+        assertEquals(42, merged.id)
+        assertEquals(listOf(42), repo.state.value.trips.map { it.id })
+        server.close()
+    }
 }
