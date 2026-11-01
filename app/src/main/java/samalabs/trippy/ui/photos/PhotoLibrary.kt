@@ -55,18 +55,27 @@ object PhotoLibrary {
     private const val SCAN_LIMIT = 400
 
     /** Photos taken in the local [from, to) window (with a day of slack for time zones). */
+    /**
+     * Photos on this phone taken around [from]..[to]. MediaStore's DATE_TAKEN does most of the work; photos
+     * whose EXIF has no time zone (copied from a camera, older phones) have no DATE_TAKEN, so the most recent
+     * of those are read and kept when their EXIF date lands in the window.
+     */
     suspend fun scan(ctx: Context, from: LocalDateTime, to: LocalDateTime): List<LocalPhoto> = withContext(Dispatchers.IO) {
         if (PhotoAccess.level(ctx) == LibraryAccess.None) return@withContext emptyList()
         val zone = ZoneId.systemDefault()
         val lo = from.minusDays(1).atZone(zone).toInstant().toEpochMilli()
         val hi = to.plusDays(1).atZone(zone).toInstant().toEpochMilli()
+        val taken = MediaStore.Images.Media.DATE_TAKEN
+        val dated = query(ctx, "$taken >= ? AND $taken < ?", arrayOf(lo.toString(), hi.toString()), "$taken ASC", zone)
+        val undated = query(ctx, "$taken IS NULL OR $taken = 0", null, "${MediaStore.Images.Media.DATE_MODIFIED} DESC", zone)
+            .filter { p -> p.takenAt != null && !p.takenAt.isBefore(from.minusDays(1)) && p.takenAt.isBefore(to.plusDays(1)) }
+        dated + undated
+    }
+
+    private fun query(ctx: Context, where: String, args: Array<String>?, order: String, zone: ZoneId): List<LocalPhoto> {
         val out = mutableListOf<LocalPhoto>()
         val proj = arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DATE_TAKEN)
-        ctx.contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, proj,
-            "${MediaStore.Images.Media.DATE_TAKEN} >= ? AND ${MediaStore.Images.Media.DATE_TAKEN} < ?",
-            arrayOf(lo.toString(), hi.toString()), "${MediaStore.Images.Media.DATE_TAKEN} ASC",
-        )?.use { c ->
+        ctx.contentResolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, proj, where, args, order)?.use { c ->
             val idCol = c.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val takenCol = c.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
             while (c.moveToNext() && out.size < SCAN_LIMIT) {
@@ -76,7 +85,7 @@ object PhotoLibrary {
                 out += describe(ctx, uri, PhotoSuggest.assetId(id), fallback)
             }
         }
-        out
+        return out
     }
 
     /** Photos chosen in the system Photo Picker. */

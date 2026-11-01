@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -292,11 +293,13 @@ private fun ThumbBox(bmp: Bitmap?, modifier: Modifier, scale: ContentScale) {
 
 /** A row of story photos (no actions). */
 @Composable
-fun PhotoStrip(photos: List<TripPhoto>, size: Dp = 72.dp, onOpen: ((Int) -> Unit)? = null) {
+fun PhotoStrip(photos: List<TripPhoto>, size: Dp = 72.dp, selected: Int? = null, onOpen: ((Int) -> Unit)? = null) {
     if (photos.isEmpty()) return
     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         items(photos, key = { it.id }) { p ->
-            val m = Modifier.size(size).clip(RoundedCornerShape(10.dp))
+            val shape = RoundedCornerShape(10.dp)
+            val ring = if (selected != null && photos.indexOf(p) == selected) Modifier.border(3.dp, TColor.coral, shape) else Modifier
+            val m = Modifier.size(size).then(ring).clip(shape)
             RemoteThumb(p, if (onOpen != null) m.clickable { onOpen(photos.indexOf(p)) } else m)
         }
     }

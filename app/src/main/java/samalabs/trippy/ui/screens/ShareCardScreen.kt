@@ -144,7 +144,7 @@ fun ShareCardScreen(tripId: Int?, initialYear: Int?, onBack: () -> Unit) {
                     }
                     if (usePhoto) {
                         Box(Modifier.fillMaxWidth()) {
-                            samalabs.trippy.ui.photos.PhotoStrip(tripPhotos, 64.dp) { photoIndex = it }
+                            samalabs.trippy.ui.photos.PhotoStrip(tripPhotos, 64.dp, selected = photoIndex) { photoIndex = it }
                         }
                     }
                 }
