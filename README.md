@@ -71,6 +71,15 @@ Then log in as `alex@example.com` / `demo-password-123!`.
   trips are offered; you pick which ones to keep. Drives show up as driving days on trips,
   journeys and stories (with the route drawn), and in the Driver's Log, which can also
   suggest the drive that was your rental pickup or drop-off. Drives are private to you.
+- **Photos:** a trip's **Photos** section adds pictures with the system Photo Picker, which
+  needs no permission. **Suggest from trip dates** asks for photo access, then offers photos
+  taken during the trip and near its places (from the photo's date and GPS); you keep or skip
+  each one. On Android 14+ you can give access to selected photos only. Full photos never leave
+  the phone: Trippy uploads only a small thumbnail (512 px at most) and the photo's on-device
+  id. Photos show on the trip, in its story, and as an optional share-card background.
+  Removing a photo from a trip never deletes it from the phone. Because this build is
+  sideloaded, it declares `READ_MEDIA_IMAGES` for suggestions, a permission Google Play
+  limits.
 
 ## License
 

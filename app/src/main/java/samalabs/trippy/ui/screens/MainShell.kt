@@ -200,7 +200,7 @@ fun MainShell() {
                                 if (owns(trip)) add(MenuAction("Delete trip…", Icons.Filled.Delete, destructive = true) { deleting = listOf(trip.id) })
                                 else add(MenuAction("Leave trip…", Icons.AutoMirrored.Filled.ExitToApp, destructive = true) { deleting = listOf(trip.id) })
                             },
-                            extraSections = { TripDrivesSection(trip.id, trip) },
+                            extraSections = { samalabs.trippy.ui.photos.TripPhotosSection(trip, trip); TripDrivesSection(trip.id, trip) },
                         ))
                         if (inviting) InviteTravelersFlow(trip) { inviting = false }
                         if (choosing) JourneyChooserDialog(

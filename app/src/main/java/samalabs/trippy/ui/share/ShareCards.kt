@@ -35,9 +35,11 @@ object ShareCards {
     private val medium: Typeface by lazy { Typeface.create("sans-serif-medium", Typeface.NORMAL) }
     private val monoBold: Typeface by lazy { Typeface.create(Typeface.MONOSPACE, Typeface.BOLD) }
 
-    fun trip(story: TripStory, format: CardFormat, theme: StoryTheme, hideSpend: Boolean): Bitmap =
+    /** [photo], when set, fills the card behind a dark wash so the text stays readable. */
+    fun trip(story: TripStory, format: CardFormat, theme: StoryTheme, hideSpend: Boolean, photo: Bitmap? = null): Bitmap =
         draw(format) { c ->
             background(c, format, theme.palette)
+            if (photo != null) photoBackground(c, format, photo, theme.palette)
             if (format == CardFormat.Story) tripStory(c, story, theme.palette, hideSpend) else tripSquare(c, story, theme.palette, hideSpend)
         }
 
@@ -146,6 +148,22 @@ object ShareCards {
         c.drawRect(0f, 0f, w, h, bg)
         glow(c, w * 0.9f, h * 0.06f, w * 0.8f, argb(p.accent, 0.32f))
         glow(c, w * 0.02f, h * 0.78f, w * 0.75f, argb(p.colors[0], 0.5f))
+    }
+
+    /** Center-crops [photo] over the whole card, then darkens it (more at the bottom, where the stats sit). */
+    private fun photoBackground(c: Canvas, f: CardFormat, photo: Bitmap, p: CardPalette) {
+        val w = f.width.toFloat(); val h = f.height.toFloat()
+        val (sx, sy, sw, sh) = samalabs.trippy.domain.CardCrop.centerCrop(photo.width, photo.height, w, h)
+        val src = android.graphics.Rect(sx, sy, sx + sw, sy + sh)
+        c.drawBitmap(photo, src, RectF(0f, 0f, w, h), Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+        val wash = Paint().apply {
+            shader = LinearGradient(
+                0f, 0f, 0f, h,
+                intArrayOf(argb(p.colors[0], 0.55f), argb(p.colors[1], 0.62f), argb(p.colors[2], 0.9f)),
+                floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
+            )
+        }
+        c.drawRect(0f, 0f, w, h, wash)
     }
 
     private fun glow(c: Canvas, x: Float, y: Float, r: Float, color: Int) {

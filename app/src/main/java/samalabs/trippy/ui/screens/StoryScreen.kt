@@ -105,6 +105,7 @@ fun StoryScreen(tripId: Int, onBack: () -> Unit, onShare: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var confirmReset by remember { mutableStateOf(false) }
     var noteFor by remember { mutableStateOf<StoryItem?>(null) }
+    var photoAt by remember { mutableStateOf<Int?>(null) }
     var title by remember { mutableStateOf("") }
     var subtitle by remember { mutableStateOf("") }
     var theme by remember { mutableStateOf(StoryTheme.Indigo) }
@@ -163,6 +164,7 @@ fun StoryScreen(tripId: Int, onBack: () -> Unit, onShare: () -> Unit) {
         val ordered = order.mapNotNull { byKey[it] }
         val visible = ordered.filter { hidden[it.key] != true }
         val shownTitle = title.ifBlank { s.generatedTitle.ifBlank { "Trip" } }
+        val photosByItem = remember(s) { s.tripPhotos.filter { it.itemKey != null }.groupBy { it.itemKey!! } }
         LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { StoryHero(s, shownTitle, subtitle, theme) { playing = true } }
             if (editing) item {
@@ -175,6 +177,10 @@ fun StoryScreen(tripId: Int, onBack: () -> Unit, onShare: () -> Unit) {
                 }
             }
             item { StatChips(s) }
+            if (s.tripPhotos.isNotEmpty() && !editing) {
+                item { SectionLabel("Photos", trailing = "${s.tripPhotos.size}") }
+                item { samalabs.trippy.ui.photos.PhotoStrip(s.tripPhotos, 88.dp) { photoAt = it } }
+            }
             if (s.highlights.isNotEmpty() && !editing) {
                 item { SectionLabel("Highlights") }
                 item {
@@ -197,7 +203,7 @@ fun StoryScreen(tripId: Int, onBack: () -> Unit, onShare: () -> Unit) {
             items(rows, key = { it.key }) { item ->
                 val idx = order.indexOf(item.key)
                 TimelineRow(
-                    item = item, note = notes[item.key], editing = editing, hidden = hidden[item.key] == true, last = item == rows.last(),
+                    item = item, photos = photosByItem[item.key].orEmpty(), note = notes[item.key], editing = editing, hidden = hidden[item.key] == true, last = item == rows.last(),
                     onHide = { if (hidden[item.key] == true) hidden.remove(item.key) else hidden[item.key] = true },
                     onUp = { if (idx > 0) { order.removeAt(idx); order.add(idx - 1, item.key) } },
                     onDown = { if (idx in 0 until order.lastIndex) { order.removeAt(idx); order.add(idx + 1, item.key) } },
@@ -206,6 +212,7 @@ fun StoryScreen(tripId: Int, onBack: () -> Unit, onShare: () -> Unit) {
             }
         }
         // A full-screen dialog: inside this Column the LazyColumn has already taken all the height.
+        photoAt?.let { i -> samalabs.trippy.ui.photos.PhotoGallery(s.tripPhotos, i, onClose = { photoAt = null }) }
         if (playing) Dialog({ playing = false }, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
             StoryPlayer(s, shownTitle, subtitle, visible, notes, theme) { playing = false }
         }
@@ -286,7 +293,7 @@ internal fun ThemePicker(selected: StoryTheme, onSelect: (StoryTheme) -> Unit) {
 
 @Composable
 private fun TimelineRow(
-    item: StoryItem, note: String?, editing: Boolean, hidden: Boolean, last: Boolean,
+    item: StoryItem, photos: List<samalabs.trippy.data.TripPhoto>, note: String?, editing: Boolean, hidden: Boolean, last: Boolean,
     onHide: () -> Unit, onUp: () -> Unit, onDown: () -> Unit, onNote: () -> Unit,
 ) {
     val tint = storyKindTint(item.kind)
@@ -308,6 +315,7 @@ private fun TimelineRow(
                     item.paths, Modifier.padding(top = 6.dp).fillMaxWidth().height(96.dp).clip(RoundedCornerShape(12.dp)),
                 )
             }
+            if (photos.isNotEmpty()) Box(Modifier.padding(top = 6.dp)) { samalabs.trippy.ui.photos.PhotoStrip(photos, 56.dp) }
             note?.let { Text("“$it”", style = TType.footnote, color = TColor.textSecondary) }
         }
         if (editing) {
@@ -392,6 +400,9 @@ private fun StoryPlayer(
                                 samalabs.trippy.ui.components.DrivePathArt(
                                     it.paths, Modifier.padding(top = 20.dp).fillMaxWidth().height(220.dp), color = accent, background = false,
                                 )
+                            }
+                            s.tripPhotos.filter { p -> p.itemKey == it.key }.take(6).takeIf { p -> p.isNotEmpty() }?.let { p ->
+                                Box(Modifier.padding(top = 20.dp)) { samalabs.trippy.ui.photos.PhotoStrip(p, 120.dp) }
                             }
                             notes[it.key]?.let { n -> Text("“$n”", style = TType.body, color = Color.White.copy(alpha = 0.85f), modifier = Modifier.padding(top = 16.dp)) }
                         }

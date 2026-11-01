@@ -66,6 +66,9 @@ fun ShareCardScreen(tripId: Int?, initialYear: Int?, onBack: () -> Unit) {
     var theme by remember { mutableStateOf(StoryTheme.Indigo) }
     var hideSpend by remember { mutableStateOf(false) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var usePhoto by remember { mutableStateOf(false) }
+    var photoIndex by remember { mutableIntStateOf(0) }
+    var photoBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(tripId, year) {
@@ -79,11 +82,19 @@ fun ShareCardScreen(tripId: Int?, initialYear: Int?, onBack: () -> Unit) {
             }
         } catch (e: Exception) { error = e.message ?: "Couldn't load the card." }
     }
-    LaunchedEffect(story, yearStory, format, theme, hideSpend) {
+    // The background photo: this phone's full photo when it's here and readable, else the server thumbnail.
+    LaunchedEffect(usePhoto, photoIndex, story) {
+        val p = story?.tripPhotos?.getOrNull(photoIndex)
+        photoBitmap = if (!usePhoto || p == null) null else {
+            (if (p.deviceId == c.photos.deviceId) samalabs.trippy.ui.photos.PhotoLibrary.large(ctx, p.assetId) else null)
+                ?: runCatching { c.photos.thumb(p) }.getOrNull()?.let { withContext(Dispatchers.Default) { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) } }
+        }
+    }
+    LaunchedEffect(story, yearStory, format, theme, hideSpend, photoBitmap) {
         val s = story; val y = yearStory
         bitmap = withContext(Dispatchers.Default) {
             when {
-                s != null -> ShareCards.trip(s, format, theme, hideSpend)
+                s != null -> ShareCards.trip(s, format, theme, hideSpend, photoBitmap)
                 y != null -> ShareCards.year(y, format)
                 else -> null
             }
@@ -124,6 +135,18 @@ fun ShareCardScreen(tripId: Int?, initialYear: Int?, onBack: () -> Unit) {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("THEME", style = TType.label, color = TColor.textSecondary)
                     ThemePicker(theme) { theme = it }
+                }
+                val tripPhotos = story?.tripPhotos.orEmpty()
+                if (tripPhotos.isNotEmpty()) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Photo background", style = TType.body, color = TColor.textPrimary, modifier = Modifier.weight(1f))
+                        Switch(usePhoto, { usePhoto = it }, colors = SwitchDefaults.colors(checkedTrackColor = TColor.coral))
+                    }
+                    if (usePhoto) {
+                        Box(Modifier.fillMaxWidth()) {
+                            samalabs.trippy.ui.photos.PhotoStrip(tripPhotos, 64.dp) { photoIndex = it }
+                        }
+                    }
                 }
                 if (story?.stats?.spendText != null) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

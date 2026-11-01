@@ -151,3 +151,20 @@ object StoryText {
         }
     }
 }
+
+/** Pixel rectangle of a [srcW]×[srcH] image that fills a [dstW]×[dstH] box when scaled (center crop). */
+object CardCrop {
+    data class Crop(val x: Int, val y: Int, val w: Int, val h: Int)
+
+    fun centerCrop(srcW: Int, srcH: Int, dstW: Float, dstH: Float): Crop {
+        if (srcW <= 0 || srcH <= 0 || dstW <= 0f || dstH <= 0f) return Crop(0, 0, srcW.coerceAtLeast(0), srcH.coerceAtLeast(0))
+        val target = dstW / dstH
+        return if (srcW.toFloat() / srcH > target) {
+            val w = (srcH * target).toInt().coerceIn(1, srcW)
+            Crop((srcW - w) / 2, 0, w, srcH)
+        } else {
+            val h = (srcW / target).toInt().coerceIn(1, srcH)
+            Crop(0, (srcH - h) / 2, srcW, h)
+        }
+    }
+}

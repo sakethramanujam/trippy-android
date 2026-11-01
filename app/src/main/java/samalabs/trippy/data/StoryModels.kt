@@ -86,6 +86,8 @@ data class TripStory(
     val subtitle: String? = null,
     val theme: String? = null,
     val edited: Boolean = false,
+    /** Your photo thumbnails on this trip, tagged with their day and story item. */
+    @SerialName("trip_photos") val tripPhotos: List<TripPhoto> = emptyList(),
 ) {
     val displayTitle: String get() = title?.takeIf { it.isNotBlank() } ?: generatedTitle.ifBlank { "Trip" }
 }
