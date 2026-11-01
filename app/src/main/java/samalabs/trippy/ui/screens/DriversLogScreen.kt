@@ -123,6 +123,7 @@ fun DriversLogScreen(nav: Navigator, statsYears: List<Int> = emptyList(), statsB
             }
             YourYearCard(yearCard, cardYear) { nav.push(ShareCardRoute(null, cardYear)) }
             LogHero(selectedYear, s, rentals)
+            TimelineDrivesSection(selectedYear, state.rentals, state.refreshing)
             if (s.count > 0) {
                 CompaniesSection(s)
                 WeekdaySection(rentals)
@@ -388,6 +389,62 @@ private fun CarsSection(s: RentalSummary) = Section {
             Text("${i + 1}", style = TType.calloutStrong, color = TColor.textTertiary, modifier = Modifier.width(20.dp))
             Text(name, style = TType.body, color = Color.White, modifier = Modifier.weight(1f))
             Text("$n×", style = TType.calloutStrong, color = TColor.textSecondary)
+        }
+    }
+}
+
+/**
+ * Google Maps Timeline drives for the selected year: count, miles (not double counting rental
+ * odometers), the longest day, and "is this your rental pickup?" suggestions you accept or dismiss.
+ */
+@Composable
+private fun TimelineDrivesSection(year: Int?, allRentals: List<ApiRentalCar>, refreshing: Boolean) {
+    val c = LocalContainer.current
+    val scope = rememberCoroutineScope()
+    var drives by remember { mutableStateOf<List<samalabs.trippy.data.ApiDrive>>(emptyList()) }
+    var suggestions by remember { mutableStateOf<List<samalabs.trippy.data.DriveRentalSuggestion>>(emptyList()) }
+    var version by remember { mutableStateOf(0) }
+    LaunchedEffect(year, version, refreshing) {
+        if (refreshing) return@LaunchedEffect
+        runCatching { c.drives.forYear(year) }.onSuccess { drives = it }
+        runCatching { c.drives.rentalSuggestions() }.onSuccess { suggestions = it }
+    }
+    val shown = suggestions.filter { sg -> year == null || samalabs.trippy.domain.Fmt.parse(sg.drive.startTime)?.year == year }
+    if (drives.isEmpty() && shown.isEmpty()) return
+    val miles = remember(drives, allRentals) { samalabs.trippy.domain.Drives.countedMiles(drives, allRentals) }
+    val days = remember(drives) { samalabs.trippy.domain.Drives.days(drives) }
+    Section {
+        SectionTitle("Timeline drives")
+        if (drives.isNotEmpty()) {
+            BigCount(drives.size, if (drives.size == 1) "drive" else "drives")
+            Text(
+                "${Fmt.number(miles)} mi counted · ${days.size} driving day${if (days.size == 1) "" else "s"}",
+                style = TType.callout, color = TColor.textSecondary,
+            )
+            days.maxByOrNull { it.miles }?.let { d ->
+                Text("Longest day: ${d.metric} on ${Fmt.monthDay(d.date.atStartOfDay())}", style = TType.footnote, color = TColor.textTertiary)
+            }
+            Text("Drives during a rental with recorded miles aren't counted twice.", style = TType.footnote, color = TColor.textTertiary)
+        }
+        shown.forEach { sg ->
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.06f)).padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                val company = RentalBrand.forCompany(sg.rental.company).name
+                Text("Your $company ${if (sg.match == "dropoff") "drop-off" else "pickup"}?", style = TType.calloutStrong, color = Color.White)
+                val from = sg.drive.startPlace.name ?: "Start"; val to = sg.drive.endPlace.name ?: "end"
+                Text("$from → $to · ${samalabs.trippy.domain.Drives.milesText(sg.drive.distanceMiles)}", style = TType.footnote, color = TColor.textSecondary)
+                if (sg.reason.isNotBlank()) Text(sg.reason, style = TType.footnote, color = TColor.textTertiary)
+                Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    samalabs.trippy.ui.components.TextAction("Link", onClick = {
+                        scope.launch { runCatching { c.drives.linkRental(sg.driveId, sg.rentalId) }; version++ }
+                    }, color = TColor.coral)
+                    samalabs.trippy.ui.components.TextAction("Not this one", onClick = {
+                        scope.launch { runCatching { c.drives.dismissRental(sg.driveId, sg.rentalId) }; version++ }
+                    }, color = TColor.textSecondary)
+                }
+            }
         }
     }
 }

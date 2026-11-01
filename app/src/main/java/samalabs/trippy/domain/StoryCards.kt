@@ -37,6 +37,7 @@ object StoryText {
         "flight" -> "FLIGHT"
         "rental" -> "ROAD TRIP"
         "lodging" -> "STAY"
+        "drive" -> "DRIVE"
         "expenses" -> "SPENT"
         "travelers" -> "CREW"
         else -> kind.uppercase(us)
@@ -109,6 +110,7 @@ object StoryText {
         if (st.places > 0) out += "PLACES" to "${st.places}"
         if (st.flights > 0) out += "FLIGHTS" to "${st.flights}"
         if (st.rentals > 0) out += "DRIVES" to "${st.rentals}"
+        if (st.drives > 0 && st.driveMiles > 0) out += "DRIVEN" to "${compactMiles(st.driveMiles)} mi"
         if (st.nights > 0) out += "NIGHTS" to "${st.nights}"
         if (st.countries > 1) out += "COUNTRIES" to "${st.countries}"
         if (st.travelers > 1) out += "TRAVELERS" to "${st.travelers}"
@@ -123,6 +125,7 @@ object StoryText {
         out += "COUNTRIES" to "${y.countries}"
         if (y.flights > 0) out += "FLIGHTS" to "${y.flights}"
         if (y.rentals > 0) out += "DRIVES" to "${y.rentals}"
+        if (y.drives > 0 && y.driveMiles > 0) out += "DRIVEN" to "${compactMiles(y.driveMiles)} mi"
         if (y.aroundEarth >= 0.05) out += "AROUND EARTH" to String.format(us, "%.1f×", y.aroundEarth)
         if (y.daysAway > 0) out += "DAYS AWAY" to "${y.daysAway}"
         return out

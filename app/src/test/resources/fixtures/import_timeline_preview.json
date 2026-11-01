@@ -1,0 +1,11 @@
+{"needs_mapping": false, "stats": {"drives": 3, "outside_trips": 1, "scope": "trips"},
+ "items": [
+  {"kind": "drive", "summary": "May 3 · Austin → Round Rock · 9 mi", "confidence": "high", "warnings": [], "duplicate_of": null,
+   "fields": {"start_time": "2024-05-03T08:15:00-05:00"}, "match": {"trip_id": 7, "trip_title": "Austin weekend", "journey_id": null, "journey_title": null}, "suggested": true},
+  {"kind": "drive", "summary": "May 9 · Waco → Dallas · 95 mi", "warnings": [], "fields": {},
+   "match": {"trip_id": null, "trip_title": null, "journey_id": 2, "journey_title": "Texas loop"}, "suggested": true},
+  {"kind": "drive", "summary": "Jun 1 · Home → Work · 12 mi", "warnings": [], "fields": {},
+   "match": {"trip_id": null, "trip_title": null, "journey_id": null, "journey_title": null}, "suggested": false},
+  {"kind": "drive", "summary": "May 3 · repeat", "warnings": [], "fields": {}, "duplicate_of": {"kind": "drive", "id": 1},
+   "match": {"trip_id": 7, "trip_title": "Austin weekend"}, "suggested": true}
+ ]}

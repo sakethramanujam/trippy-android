@@ -317,6 +317,7 @@ fun JourneyDetailScreen(
                                 LegBlock(leg, journey, trips.firstOrNull { it.id == leg.tripId }, rentals, now, actions, onRemove = { removing = leg }, onReorder = { reordering = true })
                             }
                         }
+                        JourneyDrivesSection(journey.drives)
                         journey.costText?.let { cost ->
                             Column {
                                 Text("Money", style = TType.title3, color = TColor.textPrimary)

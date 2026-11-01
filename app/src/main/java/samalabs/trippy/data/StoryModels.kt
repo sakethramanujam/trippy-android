@@ -36,6 +36,10 @@ data class StoryItem(
     val hidden: Boolean = false,
     val note: String? = null,
     val photos: List<String> = emptyList(),
+    /** kind "drive": every drive's [[lat, lng]] path that day, its stops, and the drive ids. */
+    val paths: List<List<List<Double>>> = emptyList(),
+    val stops: List<DriveStop> = emptyList(),
+    @SerialName("drive_ids") val driveIds: List<Int> = emptyList(),
 )
 
 @Serializable
@@ -59,6 +63,8 @@ data class StoryStats(
     @SerialName("flight_miles") val flightMiles: Double = 0.0,
     @SerialName("drive_miles") val driveMiles: Double = 0.0,
     @SerialName("distance_miles") val distanceMiles: Double = 0.0,
+    val drives: Int = 0,
+    @SerialName("timeline_miles") val timelineMiles: Double = 0.0,
     val travelers: Int = 0,
     val spend: Map<String, Double> = emptyMap(),
     @SerialName("spend_text") val spendText: String? = null,
@@ -123,6 +129,9 @@ data class YearStory(
     val countries: Int = 0,
     @SerialName("flight_miles") val flightMiles: Double = 0.0,
     @SerialName("drive_miles") val driveMiles: Double = 0.0,
+    /** Part of [driveMiles]: Google Timeline drives not already counted by a rental. */
+    @SerialName("timeline_drive_miles") val timelineDriveMiles: Double = 0.0,
+    val drives: Int = 0,
     val miles: Double = 0.0,
     @SerialName("around_earth") val aroundEarth: Double = 0.0,
     @SerialName("top_destinations") val topDestinations: List<YearDestination> = emptyList(),

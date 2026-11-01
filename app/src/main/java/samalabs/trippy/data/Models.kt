@@ -315,6 +315,8 @@ data class ApiJourney(
     val legs: List<JourneyLeg> = emptyList(),
     val timeline: List<JourneyTimelineItem> = emptyList(),
     val route: List<RoutePoint> = emptyList(),
+    /** Your Timeline driving days across the journey (story-style items, kind "drive"). */
+    val drives: List<StoryItem> = emptyList(),
 )
 
 @Serializable

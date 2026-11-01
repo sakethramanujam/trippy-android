@@ -31,6 +31,7 @@ class AppContainer(app: Application) {
     val reminders = TripReminders(app)
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val inbound = samalabs.trippy.data.InboundRepository(api)
+    val drives = samalabs.trippy.data.DrivesRepository(api)
 
     init {
         api.onSessionExpired = { sessions.signOut(); trips.wipeCache() }

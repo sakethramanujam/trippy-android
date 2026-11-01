@@ -42,6 +42,20 @@ class ApiClient(
     suspend fun delete(path: String): String = send("DELETE", path, null)
     suspend fun delete(path: String, json: String): String = send("DELETE", path, json)
 
+    /** A binary GET (photo thumbnails), with the same auth and refresh as [get]. */
+    suspend fun getBytes(path: String, retried: Boolean = false): ByteArray {
+        val session = sessions.current
+        val token = session.accessToken
+        val (code, body) = executeBytes("GET", session.server + path, null, token, accept = "*/*")
+        if (code == 401 && !retried) {
+            if (refresh(token)) return getBytes(path, retried = true)
+            onSessionExpired()
+            throw SessionExpiredException()
+        }
+        if (code !in 200..299) throw ApiException(code, errorMessage(code, body.decodeToString()))
+        return body
+    }
+
     suspend fun health(baseUrl: String): ServerHealth = withContext(Dispatchers.IO) {
         val req = Request.Builder().url("$baseUrl/health").header("Cache-Control", "no-cache").build()
         val quick = http.newBuilder().callTimeout(6, TimeUnit.SECONDS).build()
@@ -81,13 +95,16 @@ class ApiClient(
     }
 
     private suspend fun execute(method: String, url: String, json: String?, token: String?): Pair<Int, String> =
+        executeBytes(method, url, json, token).let { (code, body) -> code to body.decodeToString() }
+
+    private suspend fun executeBytes(method: String, url: String, json: String?, token: String?, accept: String = "application/json"): Pair<Int, ByteArray> =
         withContext(Dispatchers.IO) {
-            val builder = Request.Builder().url(url).header("Accept", "application/json")
+            val builder = Request.Builder().url(url).header("Accept", accept)
             token?.let { builder.header("Authorization", "Bearer $it") }
             val body = json?.toRequestBody(JSON)
             builder.method(method, body)
             try {
-                http.newCall(builder.build()).execute().use { it.code to it.body.string() }
+                http.newCall(builder.build()).execute().use { it.code to it.body.bytes() }
             } catch (e: UnknownServiceException) {
                 throw cleartextBlocked()
             } catch (e: IOException) {

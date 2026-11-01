@@ -17,6 +17,19 @@ data class ImportPreviewRequest(
     val filename: String? = null,
     @SerialName("csv_kind") val csvKind: String = "flight",
     val mapping: Map<String, String>? = null,
+    /** IANA zone for Timeline times that carry no offset (older Takeout files). */
+    val timezone: String? = null,
+    /** Timeline only: "trips" keeps drives during your trips, "all" keeps every drive. */
+    @SerialName("drives_scope") val drivesScope: String? = null,
+)
+
+/** Which trip or journey a Timeline drive landed in, by date. */
+@Serializable
+data class DriveMatch(
+    @SerialName("trip_id") val tripId: Int? = null,
+    @SerialName("trip_title") val tripTitle: String? = null,
+    @SerialName("journey_id") val journeyId: Int? = null,
+    @SerialName("journey_title") val journeyTitle: String? = null,
 )
 
 @Serializable
@@ -31,6 +44,9 @@ data class ImportItem(
     @SerialName("duplicate_of") val duplicateOf: ImportDuplicate? = null,
     @SerialName("duplicate_in_batch") val duplicateInBatch: Int? = null,
     val fields: JsonObject = JsonObject(emptyMap()),
+    val match: DriveMatch? = null,
+    /** Drives: false when the server would leave it unticked (outside any trip). */
+    val suggested: Boolean? = null,
 ) {
     val isNew: Boolean get() = duplicateOf == null && duplicateInBatch == null
 }
@@ -50,6 +66,7 @@ data class ImportPreview(
     val targets: Map<String, ImportTargets> = emptyMap(),
     @SerialName("suggested_mapping") val suggestedMapping: Map<String, String?> = emptyMap(),
     @SerialName("new_count") val newCount: Int? = null,
+    val stats: JsonObject? = null,
 ) {
     /** First non-empty sample for a column. Rows come back as objects or as arrays in column order. */
     fun sample(column: String): String? {

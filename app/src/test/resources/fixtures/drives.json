@@ -1,0 +1,16 @@
+[
+  {"id": 1, "trip_id": 7, "journey_id": null, "rental_id": null, "source": "google_timeline",
+   "start_time": "2024-05-03T08:15:00", "end_time": "2024-05-03T08:40:00", "start_utc_offset": -300, "end_utc_offset": -300,
+   "date": "2024-05-03", "distance_miles": 9.4, "duration_minutes": 25,
+   "start_place": {"name": "Austin", "lat": 30.2672, "lng": -97.7431}, "end_place": {"name": "Round Rock", "lat": 30.39, "lng": -97.73},
+   "stops": [], "path": [[30.2672, -97.7431], [30.3, -97.74], [30.39, -97.73]]},
+  {"id": 2, "trip_id": 7, "journey_id": null, "rental_id": 4, "source": "google_timeline",
+   "start_time": "2024-05-03T12:00:00", "end_time": "2024-05-03T13:10:00", "start_utc_offset": -300, "end_utc_offset": -300,
+   "date": "2024-05-03", "distance_miles": 60.0, "duration_minutes": 70,
+   "start_place": {"name": "Round Rock", "lat": 30.39, "lng": -97.73}, "end_place": {"name": "Waco", "lat": 31.55, "lng": -97.14},
+   "stops": [{"name": "Salado", "lat": 30.94, "lng": -97.53, "minutes": 20}], "path": [[30.39, -97.73], [31.55, -97.14]]},
+  {"id": 3, "trip_id": 7, "journey_id": null, "rental_id": null, "source": "google_timeline",
+   "start_time": "2024-05-04T09:00:00", "end_time": "2024-05-04T10:00:00",
+   "date": "2024-05-04", "distance_miles": 0.4, "duration_minutes": 8,
+   "start_place": {"name": "Waco"}, "end_place": {"name": "Waco"}, "stops": []}
+]

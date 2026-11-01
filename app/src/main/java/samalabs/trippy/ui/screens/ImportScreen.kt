@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -73,6 +74,10 @@ import samalabs.trippy.data.ImportItem
 import samalabs.trippy.data.ImportPreview
 import samalabs.trippy.data.ImportRepository
 import samalabs.trippy.domain.CsvKind
+import samalabs.trippy.domain.DrivesScope
+import samalabs.trippy.domain.MAX_TIMELINE_BYTES
+import samalabs.trippy.domain.MAX_TIMELINE_INPUT_BYTES
+import samalabs.trippy.domain.TimelineSlim
 import samalabs.trippy.domain.ImportSource
 import samalabs.trippy.domain.Importing
 import samalabs.trippy.domain.MAX_IMPORT_BYTES
@@ -96,6 +101,7 @@ private fun ImportSource.tint(): Color = when (this) {
     ImportSource.Pkpass -> TColor.green
     ImportSource.Email -> TColor.orange
     ImportSource.Csv -> TColor.purple
+    ImportSource.GoogleTimeline -> TColor.blue
 }
 
 private fun ImportSource.icon(): ImageVector = when (this) {
@@ -105,18 +111,41 @@ private fun ImportSource.icon(): ImageVector = when (this) {
     ImportSource.Pkpass -> Icons.Filled.Badge
     ImportSource.Email -> Icons.Filled.Email
     ImportSource.Csv -> Icons.Filled.TableChart
+    ImportSource.GoogleTimeline -> Icons.Filled.Timeline
 }
 
 private fun kindIcon(kind: String): ImageVector = when (kind) {
     "rental" -> Icons.Filled.DirectionsCar
     "lodging" -> Icons.Filled.Hotel
+    "drive" -> Icons.Filled.Timeline
     else -> Icons.Filled.Flight
 }
 
 private fun kindTint(kind: String): Color = when (kind) {
     "rental" -> TColor.green
     "lodging" -> TColor.coral
+    "drive" -> TColor.teal
     else -> TColor.route
+}
+
+/**
+ * Reads a Timeline export, streaming it through [TimelineSlim] so a 200 MB phone export with
+ * rawSignals becomes the few MB of segments the server needs. Nothing is kept on disk.
+ */
+private fun readTimeline(ctx: Context, uri: Uri): PickedFile {
+    val resolver = ctx.contentResolver
+    var name = "Timeline.json"
+    var size = -1L
+    resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { cur ->
+        if (cur.moveToFirst()) {
+            cur.getColumnIndex(OpenableColumns.DISPLAY_NAME).takeIf { it >= 0 }?.let { i -> cur.getString(i)?.let { name = it } }
+            cur.getColumnIndex(OpenableColumns.SIZE).takeIf { it >= 0 && !cur.isNull(it) }?.let { size = cur.getLong(it) }
+        }
+    }
+    if (size > MAX_TIMELINE_INPUT_BYTES) throw IllegalArgumentException("That file is over 400 MB. Export a shorter date range from Google Maps.")
+    val bytes = resolver.openInputStream(uri)?.use { TimelineSlim.slim(it, MAX_TIMELINE_BYTES) }
+        ?: throw IllegalArgumentException("Couldn't open that file.")
+    return PickedFile(name, bytes)
 }
 
 /** Reads a SAF document, refusing anything over the server's 5 MB limit. */
@@ -157,6 +186,7 @@ fun ImportScreen(tripId: Int?, onBack: () -> Unit) {
     var url by remember { mutableStateOf("") }
     var file by remember { mutableStateOf<PickedFile?>(null) }
     var csvKind by remember { mutableStateOf(CsvKind.Flight) }
+    var drivesScope by remember { mutableStateOf(DrivesScope.Trips) }
     var preview by remember { mutableStateOf<ImportPreview?>(null) }
     var mapped by remember { mutableStateOf(false) }
     val mapping = remember { mutableStateMapOf<String, String>() }
@@ -166,7 +196,10 @@ fun ImportScreen(tripId: Int?, onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
 
     fun runPreview(withMapping: Boolean) {
-        val req = Importing.previewRequest(source, text, url, file, csvKind, if (withMapping) mapping.toMap() else null) ?: return
+        val req = Importing.previewRequest(
+            source, text, url, file, csvKind, if (withMapping) mapping.toMap() else null,
+            timezone = java.time.ZoneId.systemDefault().id, drivesScope = drivesScope,
+        ) ?: return
         scope.launch {
             busy = true
             error = null
@@ -193,7 +226,9 @@ fun ImportScreen(tripId: Int?, onBack: () -> Unit) {
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             try {
-                file = withContext(Dispatchers.IO) { readPicked(ctx, uri) }
+                file = withContext(Dispatchers.IO) {
+                    if (source == ImportSource.GoogleTimeline) readTimeline(ctx, uri) else readPicked(ctx, uri)
+                }
                 error = null
                 runPreview(withMapping = false)
             } catch (e: Exception) {
@@ -237,6 +272,7 @@ fun ImportScreen(tripId: Int?, onBack: () -> Unit) {
                 ImportStage.Input -> InputStage(
                     source = source, text = text, onText = { text = it }, url = url, onUrl = { url = it },
                     file = file, csvKind = csvKind, onCsvKind = { csvKind = it }, busy = busy,
+                    drivesScope = drivesScope, onDrivesScope = { drivesScope = it; if (file != null) runPreview(withMapping = false) },
                     onPick = { picker.launch(arrayOf("*/*")) },
                     onPreview = { runPreview(withMapping = false) },
                 )
@@ -248,6 +284,14 @@ fun ImportScreen(tripId: Int?, onBack: () -> Unit) {
                     )
                 }
                 ImportStage.Preview -> preview?.let { p ->
+                    val outside = Importing.stat(p.stats, "outside_trips")
+                    if (source == ImportSource.GoogleTimeline && drivesScope == DrivesScope.Trips && outside > 0) {
+                        Column(Modifier.trippyCard().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("$outside drive${if (outside == 1) "" else "s"} outside your trips left out", style = TType.calloutStrong, color = TColor.textPrimary)
+                            Text("Drives stay private to you. Bring them all in to count every mile in the Driver's Log.", style = TType.footnote, color = TColor.textSecondary)
+                            TextAction("Show every drive", onClick = { drivesScope = DrivesScope.All; runPreview(withMapping = false) }, color = TColor.coral)
+                        }
+                    }
                     PreviewStage(p.items, selected, busy,
                         onToggle = { i -> selected = if (i in selected) selected - i else selected + i },
                         onAll = { all -> selected = if (all) p.items.indices.toSet() else emptySet() },
@@ -305,6 +349,7 @@ private fun SourceRow(s: ImportSource, onClick: () -> Unit) {
 private fun InputStage(
     source: ImportSource, text: String, onText: (String) -> Unit, url: String, onUrl: (String) -> Unit,
     file: PickedFile?, csvKind: CsvKind, onCsvKind: (CsvKind) -> Unit, busy: Boolean,
+    drivesScope: DrivesScope, onDrivesScope: (DrivesScope) -> Unit,
     onPick: () -> Unit, onPreview: () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -316,6 +361,15 @@ private fun InputStage(
     if (source == ImportSource.Csv) {
         SectionLabel("The rows are")
         MoneySegmented(CsvKind.entries.map { it.label }, csvKind.ordinal) { onCsvKind(CsvKind.entries[it]) }
+    }
+    if (source == ImportSource.GoogleTimeline) {
+        SectionLabel("Bring in")
+        MoneySegmented(DrivesScope.entries.map { it.label }, drivesScope.ordinal) { onDrivesScope(DrivesScope.entries[it]) }
+        Text(
+            "Only drives come in: miles, times, the route and stops. They match your trips by date and only you can see them. " +
+                "Big exports are trimmed on this phone before upload.",
+            style = TType.footnote, color = TColor.textTertiary,
+        )
     }
     if (source.url) {
         AuthField("Feed link", url, onUrl, placeholder = "webcal://…", keyboardType = KeyboardType.Uri, mono = true)
@@ -382,7 +436,7 @@ private fun PreviewStage(items: List<ImportItem>, selected: Set<Int>, busy: Bool
     val fresh = items.count { it.isNew }
     Text(if (items.isEmpty()) "Nothing found" else "Found ${items.size}", style = TType.title2, color = TColor.textPrimary)
     Text(
-        if (items.isEmpty()) "Trippy couldn't find flights, stays or rentals in that. Try another source." else "$fresh new · ${items.size - fresh} already in Trippy",
+        if (items.isEmpty()) "Trippy couldn't find flights, stays, rentals or drives in that. Try another source." else "$fresh new · ${items.size - fresh} already in Trippy",
         style = TType.callout, color = TColor.textSecondary,
     )
     if (items.isEmpty()) return
@@ -406,6 +460,7 @@ private fun PreviewStage(items: List<ImportItem>, selected: Set<Int>, busy: Bool
                         Spacer(Modifier.width(6.dp))
                         Text(item.summary.ifBlank { item.kind }, style = TType.callout, color = TColor.textPrimary, modifier = Modifier.weight(1f))
                     }
+                    Importing.matchLabel(item)?.let { Text(it, style = TType.footnoteStrong, color = if (item.suggested == false) TColor.textTertiary else TColor.teal) }
                     Importing.duplicateNote(item)?.let { Text(it, style = TType.footnoteStrong, color = TColor.textTertiary) }
                     if (item.confidence == "low") Text("Low confidence: check it after import", style = TType.footnote, color = TColor.amber)
                     item.warnings.forEach { w ->

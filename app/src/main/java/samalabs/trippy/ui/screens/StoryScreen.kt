@@ -84,6 +84,7 @@ internal fun storyKindTint(kind: String): Color = when (kind) {
     "flight" -> TColor.route
     "rental" -> TColor.green
     "lodging" -> TColor.coral
+    "drive" -> TColor.teal
     "expenses" -> TColor.teal
     "travelers" -> TColor.purple
     else -> TColor.textSecondary
@@ -302,6 +303,11 @@ private fun TimelineRow(
             Text(item.title, style = TType.calloutStrong, color = TColor.textPrimary)
             item.subtitle?.takeIf { it.isNotBlank() }?.let { Text(it, style = TType.footnote, color = TColor.textSecondary, maxLines = 2) }
             item.metric?.let { Text(it, style = TType.footnoteStrong, color = TColor.textPrimary) }
+            if (item.kind == "drive" && item.paths.isNotEmpty()) {
+                samalabs.trippy.ui.components.DrivePathArt(
+                    item.paths, Modifier.padding(top = 6.dp).fillMaxWidth().height(96.dp).clip(RoundedCornerShape(12.dp)),
+                )
+            }
             note?.let { Text("“$it”", style = TType.footnote, color = TColor.textSecondary) }
         }
         if (editing) {
@@ -382,6 +388,11 @@ private fun StoryPlayer(
                             Text(it.title, style = TType.display, color = Color.White)
                             it.subtitle?.takeIf { t -> t.isNotBlank() }?.let { t -> Text(t, style = TType.title3, color = Color.White.copy(alpha = 0.8f)) }
                             it.metric?.let { m -> Text(m, style = TType.largeTitle, color = accent, modifier = Modifier.padding(top = 16.dp)) }
+                            if (it.kind == "drive" && it.paths.isNotEmpty()) {
+                                samalabs.trippy.ui.components.DrivePathArt(
+                                    it.paths, Modifier.padding(top = 20.dp).fillMaxWidth().height(220.dp), color = accent, background = false,
+                                )
+                            }
                             notes[it.key]?.let { n -> Text("“$n”", style = TType.body, color = Color.White.copy(alpha = 0.85f), modifier = Modifier.padding(top = 16.dp)) }
                         }
                         Slide.Highlights -> {

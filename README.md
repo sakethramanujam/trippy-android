@@ -65,6 +65,12 @@ Then log in as `alex@example.com` / `demo-password-123!`.
   shows your next trip and next flight.
 - **Live status:** flight pages show gates, delays and baggage belts when your server's admin
   has configured a flight data provider.
+- **Google Maps Timeline:** **Import → Google Maps Timeline** takes the `Timeline.json` you
+  export from Google Maps (Settings → Location & privacy → Export Timeline data). The phone
+  strips the raw location signals before uploading, and by default only drives during your
+  trips are offered; you pick which ones to keep. Drives show up as driving days on trips,
+  journeys and stories (with the route drawn), and in the Driver's Log, which can also
+  suggest the drive that was your rental pickup or drop-off. Drives are private to you.
 
 ## License
 
