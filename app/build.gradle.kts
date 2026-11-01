@@ -15,8 +15,8 @@ android {
         applicationId = "samalabs.trippy"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
         // Default server shown on first launch; users change it on the welcome screen.
         buildConfigField("String", "DEFAULT_SERVER", "\"http://10.0.2.2:8000\"")
     }
