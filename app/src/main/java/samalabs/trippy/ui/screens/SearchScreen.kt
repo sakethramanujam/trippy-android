@@ -57,14 +57,26 @@ import samalabs.trippy.ui.components.trippyCard
 import samalabs.trippy.ui.theme.TColor
 import samalabs.trippy.ui.theme.TType
 
+/** Preserves the active search query when navigating into a result and back. */
+object SearchState {
+    var query: String = ""
+    fun clear() { query = "" }
+}
+
 /** Search everything on the phone. Works offline because it reads the loaded (or cached) lists. */
 @Composable
-fun SearchScreen(onBack: () -> Unit, open: (SearchHit.Target) -> Unit) {
+fun SearchScreen(
+    onBack: () -> Unit,
+    open: (SearchHit.Target) -> Unit,
+    searchState: SearchState = SearchState,
+) {
     val state by LocalContainer.current.trips.state.collectAsState()
-    var query by rememberSaveable { mutableStateOfString() }
+    var query by rememberSaveable { androidx.compose.runtime.mutableStateOf(searchState.query) }
     val results = remember(query, state.trips, state.rentals) { TripSearch.search(query, state.trips, state.rentals) }
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) {
+        if (query.isEmpty()) runCatching { focus.requestFocus() }
+    }
     Column(Modifier.fillMaxSize().background(TColor.canvas).safeDrawingPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             RoundButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TColor.textPrimary, modifier = Modifier.size(20.dp)) }
@@ -78,13 +90,16 @@ fun SearchScreen(onBack: () -> Unit, open: (SearchHit.Target) -> Unit) {
                 Box(Modifier.weight(1f)) {
                     if (query.isEmpty()) Text("Trips, flights, hotels, PNRs…", style = TType.body, color = TColor.textTertiary)
                     BasicTextField(
-                        query, { query = it }, singleLine = true,
+                        query, { query = it; searchState.query = it }, singleLine = true,
                         textStyle = TType.body.copy(color = TColor.textPrimary), cursorBrush = SolidColor(TColor.coral),
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false),
                         modifier = Modifier.fillMaxWidth().focusRequester(focus),
                     )
                 }
-                if (query.isNotEmpty()) Icon(Icons.Filled.Cancel, "Clear", tint = TColor.textSecondary, modifier = Modifier.size(18.dp).plainClick { query = "" })
+                if (query.isNotEmpty()) Icon(Icons.Filled.Cancel, "Clear", tint = TColor.textSecondary, modifier = Modifier.size(18.dp).plainClick {
+                    query = ""
+                    searchState.query = ""
+                })
             }
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {

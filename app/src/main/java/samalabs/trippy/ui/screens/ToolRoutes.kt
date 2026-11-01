@@ -8,7 +8,7 @@ data object SearchRoute : Route
 @Composable
 fun ToolRouteScreen(route: Route, nav: Navigator) {
     when (route) {
-        SearchRoute -> SearchScreen(onBack = { nav.pop() }, open = { t -> nav.push(t.toRoute()) })
+        SearchRoute -> SearchScreen(onBack = { SearchState.clear(); nav.pop() }, open = { t -> nav.push(t.toRoute()) })
         else -> MoreRouteScreen(route, nav)
     }
 }

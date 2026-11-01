@@ -60,4 +60,11 @@ class TripSearchTest {
         val r = TripSearch.search("golf", listOf(trip), listOf(trip.rentalCars.single(), trip.rentalCars.single()))
         assertEquals(1, r.single().second.size)
     }
+
+    @Test fun searchStatePreservesQueryAndClears() {
+        samalabs.trippy.ui.screens.SearchState.query = "Zürich"
+        assertEquals("Zürich", samalabs.trippy.ui.screens.SearchState.query)
+        samalabs.trippy.ui.screens.SearchState.clear()
+        assertEquals("", samalabs.trippy.ui.screens.SearchState.query)
+    }
 }

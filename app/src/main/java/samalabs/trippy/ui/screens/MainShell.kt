@@ -130,7 +130,10 @@ fun MainShell() {
         onDispose { runCatching { cm?.unregisterNetworkCallback(cb) } }
     }
     LaunchedEffect(networkUp.intValue) { if (networkUp.intValue > 0 && container.trips.state.value.offline) container.trips.refresh() }
-    BackHandler(enabled = nav.stack.size > 1) { nav.pop() }
+    BackHandler(enabled = nav.stack.size > 1) {
+        if (nav.top is SearchRoute) SearchState.clear()
+        nav.pop()
+    }
     val depth = nav.stack.size
     val myId = session?.profile?.id
     val owns: (ApiTrip) -> Boolean = { t -> t.ownerId == null || t.ownerId == myId }
