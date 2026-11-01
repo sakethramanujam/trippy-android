@@ -44,6 +44,9 @@ interface CacheDao {
     @Query("SELECT * FROM responses WHERE scope = :scope AND path = :path")
     suspend fun read(scope: String, path: String): CachedResponse?
 
+    @Query("SELECT * FROM responses WHERE path = :path ORDER BY savedAt DESC LIMIT 1")
+    suspend fun readLatest(path: String): CachedResponse?
+
     @Upsert
     suspend fun write(entry: CachedResponse)
 
