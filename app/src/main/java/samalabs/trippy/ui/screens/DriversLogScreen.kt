@@ -152,7 +152,9 @@ private fun YourYearCard(year: YearStory?, yearNumber: Int, onShare: () -> Unit)
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
             .background(Brush.linearGradient(listOf(Color(0xFF4B1FD1), purpleDeep, purpleNight)))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(22.dp)).padding(18.dp),
+            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(22.dp))
+            .plainClick(onShare)
+            .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.Top) {
