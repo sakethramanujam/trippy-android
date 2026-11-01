@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.PushPin
@@ -184,7 +185,9 @@ fun MainShell() {
                             close = { nav.pop() },
                             openEvent = { e -> openEvent(trip.id, e) },
                             openJourney = { nav.push(Route.Journey(it)) },
+                            addFlight = { nav.push(AddFlightRoute(trip.id)) },
                             menu = buildList {
+                                add(MenuAction("Add flight", Icons.Filled.FlightTakeoff) { nav.push(AddFlightRoute(trip.id)) })
                                 add(MenuAction(if (trip.pinned) "Unpin" else "Pin to top", Icons.Filled.PushPin) {
                                     scope.launch { container.trips.setPinned(trip.id, !trip.pinned) }
                                 })

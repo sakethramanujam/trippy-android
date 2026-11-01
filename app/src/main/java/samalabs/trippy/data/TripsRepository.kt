@@ -92,6 +92,24 @@ class TripsRepository(
         }
     }
 
+    /** Creates a flight on a trip, updates in-memory state + Room offline cache immediately, and refreshes from the server. */
+    suspend fun addFlight(tripId: Int, bodyJson: String): ApiFlight {
+        val raw = api.post("/trips/$tripId/flights/", bodyJson)
+        val created = TrippyJson.decodeFromString(ApiFlight.serializer(), raw)
+        val nowMs = clock()
+        val updatedTrips = _state.value.trips.map { t ->
+            if (t.id == tripId) t.copy(flights = t.flights + created) else t
+        }
+        _state.update { it.copy(trips = updatedTrips, offline = false, error = null, lastSynced = nowMs) }
+        val encoded = TrippyJson.encodeToString(ListSerializer(ApiTrip.serializer()), updatedTrips)
+        cache.write(CachedResponse(scope(), TRIPS, encoded, nowMs))
+        runCatching {
+            val fresh = fetch(TRIPS, ListSerializer(ApiTrip.serializer()))
+            _state.update { it.copy(trips = fresh, offline = false, error = null, lastSynced = clock()) }
+        }
+        return created
+    }
+
     fun clear() { _state.value = TripsState() }
 
     /** Decode first, then save: a body the app can't read never replaces a good copy. */

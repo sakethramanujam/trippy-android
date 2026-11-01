@@ -97,6 +97,7 @@ class TripDetailActions(
     val close: () -> Unit,
     val openEvent: (TripEvent) -> Unit = {},
     val openJourney: (Int) -> Unit = {},
+    val addFlight: (() -> Unit)? = null,
     val menu: List<MenuAction> = emptyList(),
     val headerButtons: @Composable () -> Unit = {},
     /** Extra sections other features add (expenses, stories rail...). */
@@ -125,8 +126,46 @@ fun TripDetailScreen(snap: TripSnapshot, journey: ApiJourney?, now: LocalDateTim
                 }
                 Travelers(snap)
                 Column {
-                    SectionTitle("Itinerary", if (snap.events.isEmpty()) null else "${snap.events.size} events")
-                    if (snap.events.isEmpty()) Text("Nothing booked yet. Forward confirmations to your Trippy inbox or add them on the web.", style = TType.callout, color = TColor.textSecondary)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) {
+                            SectionTitle("Itinerary", if (snap.events.isEmpty()) null else "${snap.events.size} events")
+                        }
+                        if (actions.addFlight != null && snap.trip.flights.isNotEmpty()) {
+                            Row(
+                                Modifier
+                                    .padding(start = 10.dp, bottom = 10.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(TColor.coral.copy(alpha = 0.16f))
+                                    .border(1.dp, TColor.coral.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                                    .plainClick { actions.addFlight.invoke() }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Filled.FlightTakeoff, null, tint = TColor.coral, modifier = Modifier.size(14.dp))
+                                Text("  Add flight", style = TType.footnoteStrong, color = TColor.coral)
+                            }
+                        }
+                    }
+                    if (snap.events.isEmpty()) {
+                        Text("Nothing booked yet. Forward confirmations to your Trippy inbox or add a flight below.", style = TType.callout, color = TColor.textSecondary)
+                    }
+                    if (snap.trip.flights.isEmpty() && actions.addFlight != null) {
+                        Row(
+                            Modifier
+                                .padding(top = 10.dp, bottom = 6.dp)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(TColor.coral.copy(alpha = 0.16f))
+                                .border(1.dp, TColor.coral.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                                .plainClick { actions.addFlight.invoke() }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Icon(Icons.Filled.FlightTakeoff, null, tint = TColor.coral, modifier = Modifier.size(18.dp))
+                            Text("  Add flight", style = TType.headline, color = TColor.coral)
+                        }
+                    }
                     Timeline(snap.events, now, actions)
                 }
                 Column {

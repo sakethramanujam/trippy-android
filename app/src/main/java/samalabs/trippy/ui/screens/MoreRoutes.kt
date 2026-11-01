@@ -4,8 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import samalabs.trippy.ui.flight.AddFlightScreen
 
 /** Routes for the money, story and import screens. Kept here so MainShell only needs one `else` branch. */
+data class AddFlightRoute(val tripId: Int) : Route
 data class ExpensesRoute(val tripId: Int) : Route
 data class ImportRoute(val tripId: Int?) : Route
 data class StoryRoute(val tripId: Int) : Route
@@ -14,6 +16,7 @@ data class ShareCardRoute(val tripId: Int?, val year: Int? = null) : Route
 @Composable
 fun MoreRouteScreen(route: Route, nav: Navigator) {
     when (route) {
+        is AddFlightRoute -> AddFlightScreen(route.tripId, onBack = { nav.pop() })
         is ExpensesRoute -> ExpensesScreen(route.tripId, onBack = { nav.pop() })
         is ImportRoute -> ImportScreen(route.tripId, onBack = { nav.pop() })
         is StoryRoute -> StoryScreen(route.tripId, onBack = { nav.pop() }, onShare = { nav.push(ShareCardRoute(route.tripId)) })
