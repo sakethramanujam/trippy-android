@@ -48,6 +48,14 @@ import kotlinx.coroutines.launch
 import samalabs.trippy.domain.TripSnapshot
 import samalabs.trippy.ui.LocalContainer
 import samalabs.trippy.ui.theme.TColor
+import samalabs.trippy.ui.theme.TType
+import androidx.compose.material3.Text
+import samalabs.trippy.ui.flight.FlightCreatePayload
+import samalabs.trippy.data.TrippyJson
+import samalabs.trippy.domain.fromCode
+import samalabs.trippy.domain.toCode
+import samalabs.trippy.domain.airlineName
+import samalabs.trippy.domain.number
 import java.time.LocalDateTime
 
 /** Where the user is. A plain back stack: the app is small and every screen is one level deep. */
@@ -273,8 +281,72 @@ fun MainShell() {
                         }
                     }
                 }
-                is Route.Flight -> state.trips.firstOrNull { it.id == route.tripId }?.flights?.firstOrNull { it.id == route.id }
-                    ?.let { FlightDetailScreen(it, now, onClose = { nav.pop() }) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
+                is Route.Flight -> {
+                    val flight = state.trips.firstOrNull { it.id == route.tripId }?.flights?.firstOrNull { it.id == route.id }
+                    if (flight != null) {
+                        var confirmDelete by remember { mutableStateOf(false) }
+                        FlightDetailScreen(
+                            f = flight,
+                            now = now,
+                            onClose = { nav.pop() },
+                            onEdit = { nav.push(AddFlightRoute(route.tripId, flight.id)) },
+                            onDelete = { confirmDelete = true },
+                        )
+                        if (confirmDelete) {
+                            androidx.compose.material3.AlertDialog(
+                                onDismissRequest = { confirmDelete = false },
+                                title = { Text("Delete this flight?", style = TType.title) },
+                                text = { Text("${flight.airlineName} ${flight.number} will be removed from this trip and your stats.", style = TType.callout, color = TColor.textSecondary) },
+                                confirmButton = {
+                                    androidx.compose.material3.TextButton(onClick = {
+                                        confirmDelete = false
+                                        shellScope.launch {
+                                            val tid = route.tripId
+                                            container.trips.deleteFlight(flight.id, tid)
+                                            val recreate = FlightCreatePayload(
+                                                airline = flight.airline ?: "",
+                                                flightNumber = flight.flightNumber ?: "",
+                                                departureAirport = flight.departureAirport ?: "",
+                                                arrivalAirport = flight.arrivalAirport ?: "",
+                                                departureTime = flight.departureTime ?: "",
+                                                arrivalTime = flight.arrivalTime ?: "",
+                                                status = flight.status ?: "Scheduled",
+                                                confirmationNumber = flight.confirmationNumber,
+                                                distanceMiles = flight.distanceMiles,
+                                                durationMinutes = flight.durationMinutes,
+                                                seat = flight.seat,
+                                                terminal = flight.terminal,
+                                                gate = flight.gate,
+                                                cabinClass = flight.cabinClass,
+                                                notes = flight.notes,
+                                                bookingSource = flight.bookingSource ?: "manual",
+                                            )
+                                            container.trash.showCustomUndo(
+                                                text = "Deleted ${flight.number}",
+                                                subtitle = "${flight.fromCode} → ${flight.toCode}",
+                                            ) {
+                                                container.trips.addFlight(tid, TrippyJson.encodeToString(FlightCreatePayload.serializer(), recreate))
+                                            }
+                                            nav.pop()
+                                        }
+                                    }) {
+                                        Text("Delete", color = TColor.red, style = TType.calloutStrong)
+                                    }
+                                },
+                                dismissButton = {
+                                    androidx.compose.material3.TextButton(onClick = { confirmDelete = false }) {
+                                        Text("Cancel", style = TType.callout, color = TColor.textSecondary)
+                                    }
+                                },
+                                containerColor = TColor.surfaceRaised,
+                                titleContentColor = TColor.textPrimary,
+                                textContentColor = TColor.textSecondary,
+                            )
+                        }
+                    } else {
+                        TripPlaceholder(route.id, onBack = { nav.pop() })
+                    }
+                }
                 is Route.Stay -> state.trips.firstOrNull { it.id == route.tripId }?.lodgings?.firstOrNull { it.id == route.id }
                     ?.let { StayDetailScreen(it, now, onClose = { nav.pop() }) } ?: TripPlaceholder(route.id, onBack = { nav.pop() })
                 is Route.Rental -> (state.rentals + state.trips.flatMap { it.rentalCars }).firstOrNull { it.id == route.id }

@@ -35,4 +35,23 @@ class BookingDetailTest {
         val f = ApiFlight(id = 1, flightNumber = "UA 837", confirmationNumber = "XYZ", seat = "12A", cabinClass = "economy", durationMinutes = 125, cost = 300.0)
         assertEquals(listOf("Confirmation", "Seat", "Cabin", "Duration", "Fare", "Flight"), flightFacts(f).map { it.label })
     }
+
+    @Test fun flightFactsWithTerminalGateAndNotes() {
+        val f = ApiFlight(
+            id = 1,
+            flightNumber = "UA 837",
+            confirmationNumber = "XYZ",
+            terminal = "3",
+            gate = "F12",
+            seat = "12A",
+            cabinClass = "economy",
+            durationMinutes = 125,
+            cost = 300.0,
+            notes = "Terminal change possible",
+        )
+        assertEquals(
+            listOf("Confirmation", "Terminal", "Gate", "Seat", "Cabin", "Duration", "Fare", "Flight", "Notes"),
+            flightFacts(f).map { it.label }
+        )
+    }
 }

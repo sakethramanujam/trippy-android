@@ -131,6 +131,8 @@ class AddFlightTest {
         assertEquals("17:05", prefill.arrivalTime)
         assertEquals(false, prefill.nextDayArrival)
         assertEquals("T3 · F12", prefill.terminalGate)
+        assertEquals("3", prefill.terminal)
+        assertEquals("F12", prefill.gate)
     }
 
     @Test
@@ -172,6 +174,83 @@ class AddFlightTest {
         val cached = cache.read(session.scope, TripsRepository.TRIPS)
         assertNotNull(cached)
         assertTrue(cached!!.body.contains("UA 837"))
+        server.close()
+    }
+
+    @Test
+    fun `toPayload includes terminal gate and notes`() {
+        val draft = FlightFormDraft(
+            flightNumber = "UA 1580",
+            date = "2026-11-15",
+            fromAirport = "SFO",
+            toAirport = "JFK",
+            departureTime = "09:00",
+            arrivalTime = "17:30",
+            terminal = "3",
+            gate = "F12",
+            notes = "Gate check carry on",
+        )
+        val payload = FlightFormLogic.toPayload(draft)
+        assertNotNull(payload)
+        assertEquals("3", payload!!.terminal)
+        assertEquals("F12", payload.gate)
+        assertEquals("Gate check carry on", payload.notes)
+    }
+
+    @Test
+    fun `updateFlight and deleteFlight update trip state and offline cache`() = runBlocking {
+        val cache = MemoryResponseCache()
+        val server = MockWebServer().apply { start() }
+        val baseUrl = server.url("/").toString().trimEnd('/')
+        val session = Session(baseUrl, "tok", "ref", Profile(1, "demo@example.com"))
+        val initialFlightJson = """{"id":99,"trip_id":42,"airline":"United Airlines","flight_number":"UA 837","departure_airport":"SFO","arrival_airport":"NRT","departure_time":"2026-11-10T11:15:00","arrival_time":"2026-11-11T15:25:00","status":"Scheduled"}"""
+        cache.write(
+            CachedResponse(
+                session.scope,
+                TripsRepository.TRIPS,
+                """[{"id":42,"title":"Japan","start_date":"2026-11-10T00:00:00","flights":[$initialFlightJson]}]""",
+                100L,
+            ),
+        )
+        val updatedFlightJson = """{"id":99,"trip_id":42,"airline":"United Airlines","flight_number":"UA 837","departure_airport":"SFO","arrival_airport":"NRT","departure_time":"2026-11-10T11:15:00","arrival_time":"2026-11-11T15:25:00","status":"Scheduled","terminal":"3","gate":"F12","notes":"Updated notes"}"""
+        val updatedTripsJson = """[{"id":42,"title":"Japan","start_date":"2026-11-10T00:00:00","flights":[$updatedFlightJson]}]"""
+        val emptyTripsJson = """[{"id":42,"title":"Japan","start_date":"2026-11-10T00:00:00","flights":[]}]"""
+        var currentTripsJson = updatedTripsJson
+
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.method == "PATCH" && request.url.encodedPath == "/flights/99") {
+                    currentTripsJson = updatedTripsJson
+                    return MockResponse(code = 200, body = updatedFlightJson)
+                }
+                if (request.method == "DELETE" && request.url.encodedPath == "/flights/99") {
+                    currentTripsJson = emptyTripsJson
+                    return MockResponse(code = 200, body = """{"status":"deleted"}""")
+                }
+                if (request.method == "GET" && request.url.encodedPath.startsWith("/trips")) {
+                    return MockResponse(code = 200, body = currentTripsJson)
+                }
+                return MockResponse(code = 200, body = "[]")
+            }
+        }
+        val tokens = object : TokenSource {
+            override val current: Session = session
+            override suspend fun updateTokens(access: String, refresh: String?) = Unit
+        }
+        val repo = TripsRepository(ApiClient(tokens), cache, scope = { session.scope }, clock = { 200L })
+        repo.prime()
+
+        val updated = repo.updateFlight(99, 42, """{"terminal":"3","gate":"F12","notes":"Updated notes"}""")
+        assertEquals("3", updated.terminal)
+        assertEquals("F12", updated.gate)
+        assertEquals("Updated notes", updated.notes)
+        assertEquals("3", repo.state.value.trips.single().flights.single().terminal)
+
+        repo.deleteFlight(99, 42)
+        assertTrue(repo.state.value.trips.single().flights.isEmpty())
+        val cached = cache.read(session.scope, TripsRepository.TRIPS)
+        assertNotNull(cached)
+        assertEquals(emptyList<ApiFlight>(), repo.state.value.trips.single().flights)
         server.close()
     }
 

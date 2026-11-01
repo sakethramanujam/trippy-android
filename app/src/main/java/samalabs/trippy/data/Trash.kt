@@ -85,7 +85,13 @@ data class BulkDeleteResult(val deleted: List<Deleted> = emptyList(), val skippe
 }
 
 /** The Undo toast after a soft delete. [token] makes two deletes of the same trip distinct. */
-data class UndoDelete(val ids: List<Int>, val text: String, val token: Long = System.nanoTime())
+data class UndoDelete(
+    val ids: List<Int>,
+    val text: String,
+    val subtitle: String = "In Recently Deleted for 30 days",
+    val token: Long = System.nanoTime(),
+    val customUndo: (suspend () -> Unit)? = null,
+)
 
 /** What the delete sheet should say for a set of previews. Pure, so it's unit-tested. */
 data class DeletePlan(val previews: List<DeletePreview>, val requested: Int) {
@@ -119,6 +125,10 @@ data class DeletePlan(val previews: List<DeletePreview>, val requested: Int) {
 class TrashRepository(private val api: ApiClient, private val trips: TripsRepository, private val journeys: JourneysRepository) {
     private val _undo = MutableStateFlow<UndoDelete?>(null)
     val undo: StateFlow<UndoDelete?> = _undo.asStateFlow()
+
+    fun showCustomUndo(text: String, subtitle: String = "Tap Undo to restore", onUndo: suspend () -> Unit) {
+        _undo.value = UndoDelete(emptyList(), text, subtitle = subtitle, customUndo = onUndo)
+    }
 
     suspend fun preview(ids: List<Int>): Pair<DeletePlan?, String?> = try {
         DeletePlan(ids.map { TrippyJson.decodeFromString(DeletePreview.serializer(), api.get("/trips/$it/delete-preview")) }, ids.size) to null

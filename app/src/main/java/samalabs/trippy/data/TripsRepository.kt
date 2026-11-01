@@ -110,6 +110,46 @@ class TripsRepository(
         return created
     }
 
+    /** Updates a flight on a trip, updates in-memory state + Room offline cache immediately, and refreshes from the server. */
+    suspend fun updateFlight(flightId: Int, tripId: Int?, bodyJson: String): ApiFlight {
+        val raw = api.patch("/flights/$flightId", bodyJson)
+        val updated = TrippyJson.decodeFromString(ApiFlight.serializer(), raw)
+        val nowMs = clock()
+        val targetTripId = tripId ?: updated.tripId
+        val updatedTrips = _state.value.trips.map { t ->
+            if (targetTripId == null || t.id == targetTripId) {
+                val newFlights = t.flights.map { if (it.id == flightId) updated else it }
+                t.copy(flights = newFlights)
+            } else t
+        }
+        _state.update { it.copy(trips = updatedTrips, offline = false, error = null, lastSynced = nowMs) }
+        val encoded = TrippyJson.encodeToString(ListSerializer(ApiTrip.serializer()), updatedTrips)
+        cache.write(CachedResponse(scope(), TRIPS, encoded, nowMs))
+        runCatching {
+            val fresh = fetch(TRIPS, ListSerializer(ApiTrip.serializer()))
+            _state.update { it.copy(trips = fresh, offline = false, error = null, lastSynced = clock()) }
+        }
+        return updated
+    }
+
+    /** Deletes a flight from a trip, updates in-memory state + Room offline cache immediately, and refreshes from the server. */
+    suspend fun deleteFlight(flightId: Int, tripId: Int?) {
+        api.delete("/flights/$flightId")
+        val nowMs = clock()
+        val updatedTrips = _state.value.trips.map { t ->
+            if (tripId == null || t.id == tripId) {
+                t.copy(flights = t.flights.filterNot { it.id == flightId })
+            } else t
+        }
+        _state.update { it.copy(trips = updatedTrips, offline = false, error = null, lastSynced = nowMs) }
+        val encoded = TrippyJson.encodeToString(ListSerializer(ApiTrip.serializer()), updatedTrips)
+        cache.write(CachedResponse(scope(), TRIPS, encoded, nowMs))
+        runCatching {
+            val fresh = fetch(TRIPS, ListSerializer(ApiTrip.serializer()))
+            _state.update { it.copy(trips = fresh, offline = false, error = null, lastSynced = clock()) }
+        }
+    }
+
     /** Adds a traveler by name (+ optional email) to [tripId], updating state and Room cache immediately. */
     suspend fun addTraveler(tripId: Int, name: String, email: String? = null): ApiTrip {
         val body = TrippyJson.encodeToString(

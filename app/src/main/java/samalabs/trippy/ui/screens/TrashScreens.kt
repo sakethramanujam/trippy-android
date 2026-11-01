@@ -173,12 +173,23 @@ fun UndoToastHost(modifier: Modifier = Modifier) {
             Icon(Icons.Filled.Delete, null, tint = TColor.red)
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(u.text, style = TType.calloutStrong, color = TColor.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("In Recently Deleted for 30 days", style = TType.caption, color = TColor.textSecondary)
+                Text(u.subtitle, style = TType.caption, color = TColor.textSecondary)
             }
             Text(
                 "Undo", style = TType.calloutStrong, color = TColor.amber,
                 modifier = Modifier.background(TColor.amber.copy(alpha = 0.14f), CircleShape).plainClick {
-                    if (!busy) { busy = true; scope.launch { c.trash.restore(u.ids); busy = false } }
+                    if (!busy) {
+                        busy = true
+                        scope.launch {
+                            if (u.customUndo != null) {
+                                u.customUndo.invoke()
+                            } else {
+                                c.trash.restore(u.ids)
+                            }
+                            c.trash.dismissUndo(u.token)
+                            busy = false
+                        }
+                    }
                 }.padding(horizontal = 14.dp, vertical = 8.dp),
             )
         }

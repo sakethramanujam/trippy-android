@@ -101,6 +101,8 @@ data class FlightFormDraft(
     val nextDayArrival: Boolean = false,
     val confirmationNumber: String = "",
     val seat: String = "",
+    val terminal: String = "",
+    val gate: String = "",
     val terminalGate: String = "",
     val cabinClass: String = "",
     val notes: String = "",
@@ -132,7 +134,10 @@ data class FlightCreatePayload(
     @SerialName("distance_miles") val distanceMiles: Double? = null,
     @SerialName("duration_minutes") val durationMinutes: Int? = null,
     val seat: String? = null,
+    val terminal: String? = null,
+    val gate: String? = null,
     @SerialName("cabin_class") val cabinClass: String? = null,
+    val notes: String? = null,
     @SerialName("booking_source") val bookingSource: String = "manual",
 )
 
@@ -143,6 +148,8 @@ data class FlightLookupPrefill(
     val departureTime: String? = null,
     val arrivalTime: String? = null,
     val nextDayArrival: Boolean? = null,
+    val terminal: String? = null,
+    val gate: String? = null,
     val terminalGate: String? = null,
     val message: String? = null,
 )
@@ -341,7 +348,10 @@ object FlightFormLogic {
             distanceMiles = v.distanceMiles,
             durationMinutes = v.durationMinutes,
             seat = draft.seat.trim().uppercase().takeIf { it.isNotEmpty() },
+            terminal = draft.terminal.trim().takeIf { it.isNotEmpty() },
+            gate = draft.gate.trim().uppercase().takeIf { it.isNotEmpty() },
             cabinClass = draft.cabinClass.trim().takeIf { it.isNotEmpty() },
+            notes = draft.notes.trim().takeIf { it.isNotEmpty() },
         )
     }
 
@@ -414,6 +424,8 @@ object FlightFormLogic {
             departureTime = depParsed?.second,
             arrivalTime = arrParsed?.second,
             nextDayArrival = nextDay,
+            terminal = term,
+            gate = gate,
             terminalGate = termGate,
             message = null,
         )
@@ -429,25 +441,53 @@ private val CABIN_OPTIONS = listOf(
 )
 
 @Composable
-fun AddFlightScreen(tripId: Int, onBack: () -> Unit) {
+fun AddFlightScreen(
+    tripId: Int,
+    editingFlight: ApiFlight? = null,
+    onBack: () -> Unit,
+) {
     val container = LocalContainer.current
     val state by container.trips.state.collectAsState()
     val trip = state.trips.firstOrNull { it.id == tripId }
     val scope = rememberCoroutineScope()
 
-    var flightNumber by rememberSaveable { mutableStateOf("") }
-    var airline by rememberSaveable { mutableStateOf("") }
-    var date by rememberSaveable { mutableStateOf(FlightFormLogic.defaultDate(trip).toString()) }
-    var fromAirport by rememberSaveable { mutableStateOf(FlightFormLogic.defaultFromAirport(trip)) }
-    var toAirport by rememberSaveable { mutableStateOf("") }
-    var departureTime by rememberSaveable { mutableStateOf("09:00") }
-    var arrivalTime by rememberSaveable { mutableStateOf("12:00") }
-    var nextDayArrival by rememberSaveable { mutableStateOf(false) }
-    var confirmationNumber by rememberSaveable { mutableStateOf("") }
-    var seat by rememberSaveable { mutableStateOf("") }
-    var terminalGate by rememberSaveable { mutableStateOf("") }
-    var cabinClass by rememberSaveable { mutableStateOf("") }
-    var notes by rememberSaveable { mutableStateOf("") }
+    var flightNumber by rememberSaveable { mutableStateOf(editingFlight?.flightNumber ?: "") }
+    var airline by rememberSaveable { mutableStateOf(editingFlight?.airline ?: "") }
+    var date by rememberSaveable {
+        mutableStateOf(
+            editingFlight?.departureDate?.toLocalDate()?.toString()
+                ?: FlightFormLogic.defaultDate(trip).toString()
+        )
+    }
+    var fromAirport by rememberSaveable {
+        mutableStateOf(editingFlight?.departureAirport ?: FlightFormLogic.defaultFromAirport(trip))
+    }
+    var toAirport by rememberSaveable { mutableStateOf(editingFlight?.arrivalAirport ?: "") }
+    var departureTime by rememberSaveable {
+        mutableStateOf(
+            editingFlight?.departureDate?.format(DateTimeFormatter.ofPattern("HH:mm", Locale.US)) ?: "09:00"
+        )
+    }
+    var arrivalTime by rememberSaveable {
+        mutableStateOf(
+            editingFlight?.arrivalDate?.format(DateTimeFormatter.ofPattern("HH:mm", Locale.US)) ?: "12:00"
+        )
+    }
+    var nextDayArrival by rememberSaveable {
+        mutableStateOf(
+            run {
+                val dep = editingFlight?.departureDate
+                val arr = editingFlight?.arrivalDate
+                if (dep != null && arr != null) arr.toLocalDate().isAfter(dep.toLocalDate()) else false
+            }
+        )
+    }
+    var confirmationNumber by rememberSaveable { mutableStateOf(editingFlight?.confirmationNumber ?: "") }
+    var seat by rememberSaveable { mutableStateOf(editingFlight?.seat ?: "") }
+    var terminal by rememberSaveable { mutableStateOf(editingFlight?.terminal ?: "") }
+    var gate by rememberSaveable { mutableStateOf(editingFlight?.gate ?: "") }
+    var cabinClass by rememberSaveable { mutableStateOf(editingFlight?.cabinClass ?: "") }
+    var notes by rememberSaveable { mutableStateOf(editingFlight?.notes ?: "") }
 
     var lookingUp by remember { mutableStateOf(false) }
     var lookupNotice by remember { mutableStateOf<String?>(null) }
@@ -465,7 +505,8 @@ fun AddFlightScreen(tripId: Int, onBack: () -> Unit) {
         nextDayArrival = nextDayArrival,
         confirmationNumber = confirmationNumber,
         seat = seat,
-        terminalGate = terminalGate,
+        terminal = terminal,
+        gate = gate,
         cabinClass = cabinClass,
         notes = notes,
     )
@@ -492,7 +533,7 @@ fun AddFlightScreen(tripId: Int, onBack: () -> Unit) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     MicroLabel(trip?.title?.uppercase() ?: "TRIP")
-                    Text("Add Flight", style = TType.title, color = TColor.textPrimary)
+                    Text(if (editingFlight != null) "Edit Flight" else "Add Flight", style = TType.title, color = TColor.textPrimary)
                 }
                 CircleIcon(Icons.Filled.Close, "Cancel", onClick = onBack, size = 34)
             }
@@ -555,7 +596,8 @@ fun AddFlightScreen(tripId: Int, onBack: () -> Unit) {
                                         res.departureTime?.let { departureTime = it }
                                         res.arrivalTime?.let { arrivalTime = it }
                                         res.nextDayArrival?.let { nextDayArrival = it }
-                                        res.terminalGate?.let { if (terminalGate.isBlank()) terminalGate = it }
+                                        res.terminal?.let { if (terminal.isBlank()) terminal = it }
+                                        res.gate?.let { if (gate.isBlank()) gate = it }
                                         lookupNotice = "Prefilled from live schedule."
                                     }
                                 }
@@ -750,13 +792,23 @@ fun AddFlightScreen(tripId: Int, onBack: () -> Unit) {
                     )
                 }
 
-                AuthField(
-                    label = "Terminal / Gate",
-                    value = terminalGate,
-                    onValueChange = { terminalGate = it },
-                    placeholder = "e.g. Terminal 3 · Gate F12",
-                    capitalization = KeyboardCapitalization.Words,
-                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AuthField(
+                        label = "Terminal",
+                        value = terminal,
+                        onValueChange = { terminal = it },
+                        placeholder = "e.g. 3",
+                        modifier = Modifier.weight(1f),
+                    )
+                    AuthField(
+                        label = "Gate",
+                        value = gate,
+                        onValueChange = { gate = it.uppercase() },
+                        placeholder = "e.g. F12",
+                        capitalization = KeyboardCapitalization.Characters,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("CABIN", style = TType.label, color = TColor.textSecondary)
@@ -797,7 +849,7 @@ fun AddFlightScreen(tripId: Int, onBack: () -> Unit) {
             }
 
             PrimaryButton(
-                text = if (saving) "Saving…" else "Save flight",
+                text = if (saving) "Saving…" else if (editingFlight != null) "Save changes" else "Save flight",
                 busy = saving,
                 enabled = validation.valid && !saving,
                 color = TColor.coral,
@@ -813,7 +865,11 @@ fun AddFlightScreen(tripId: Int, onBack: () -> Unit) {
                         submitError = null
                         try {
                             val json = TrippyJson.encodeToString(FlightCreatePayload.serializer(), payload)
-                            container.trips.addFlight(tripId, json)
+                            if (editingFlight != null) {
+                                container.trips.updateFlight(editingFlight.id, tripId, json)
+                            } else {
+                                container.trips.addFlight(tripId, json)
+                            }
                             saving = false
                             onBack()
                         } catch (e: OfflineException) {

@@ -108,6 +108,9 @@ data class ApiFlight(
     val cost: Double? = null,
     val currency: String? = null,
     val seat: String? = null,
+    val terminal: String? = null,
+    val gate: String? = null,
+    val notes: String? = null,
     @SerialName("cabin_class") val cabinClass: String? = null,
     @SerialName("booking_source") val bookingSource: String? = null,
 )

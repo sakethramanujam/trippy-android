@@ -1,6 +1,8 @@
 package samalabs.trippy.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,11 +18,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.NorthEast
@@ -95,6 +100,8 @@ fun flightStatusColor(f: ApiFlight): Color = when (f.statusTone) {
 
 fun flightFacts(f: ApiFlight): List<Fact> = buildList {
     f.confirmationNumber?.takeIf { it.isNotBlank() }?.let { add(Fact("Confirmation", it, mono = true, kind = FactKind.COPY)) }
+    f.terminal?.takeIf { it.isNotBlank() }?.let { add(Fact("Terminal", it)) }
+    f.gate?.takeIf { it.isNotBlank() }?.let { add(Fact("Gate", it)) }
     f.seat?.let { add(Fact("Seat", it, mono = true)) }
     DisplayName.cabin(f.cabinClass)?.let { add(Fact("Cabin", it)) }
     f.durationText?.let { add(Fact("Duration", it)) }
@@ -103,10 +110,18 @@ fun flightFacts(f: ApiFlight): List<Fact> = buildList {
     f.cost?.let { add(Fact("Fare", Fmt.money(it, f.currency))) }
     f.bookingSource?.takeIf { it.isNotBlank() }?.let { add(Fact("Booked via", it.replaceFirstChar(Char::uppercase))) }
     add(Fact("Flight", f.number, mono = true, kind = FactKind.COPY))
+    f.notes?.takeIf { it.isNotBlank() }?.let { add(Fact("Notes", it)) }
 }
 
 @Composable
-fun FlightDetailScreen(f: ApiFlight, now: LocalDateTime, onClose: () -> Unit, extras: BookingExtras = flightExtras(f, now)) {
+fun FlightDetailScreen(
+    f: ApiFlight,
+    now: LocalDateTime,
+    onClose: () -> Unit,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
+    extras: BookingExtras = flightExtras(f, now),
+) {
     DetailPage(onClose) {
         DetailHeader({ BrandTile(Brands.carrierCode(f), Brands.flight(f)) }, f.number.ifBlank { "Flight" }, f.airlineName, onClose)
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -129,6 +144,47 @@ fun FlightDetailScreen(f: ApiFlight, now: LocalDateTime, onClose: () -> Unit, ex
         extras.quickActions(this)
         extras.afterActions(this)
         FactList("Flight details", flightFacts(f))
+        if (onEdit != null || onDelete != null) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (onEdit != null) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(TColor.surfaceRaised)
+                            .border(1.dp, TColor.divider, RoundedCornerShape(14.dp))
+                            .clickable { onEdit() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Filled.Edit, contentDescription = null, tint = TColor.textPrimary, modifier = Modifier.size(18.dp))
+                            Text("Edit", style = TType.calloutStrong, color = TColor.textPrimary)
+                        }
+                    }
+                }
+                if (onDelete != null) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(TColor.red.copy(alpha = 0.12f))
+                            .border(1.dp, TColor.red.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                            .clickable { onDelete() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Filled.Delete, contentDescription = null, tint = TColor.red, modifier = Modifier.size(18.dp))
+                            Text("Delete", style = TType.calloutStrong, color = TColor.red)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
